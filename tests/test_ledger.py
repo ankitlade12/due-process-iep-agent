@@ -176,3 +176,38 @@ def test_missing_required_sessions_raises():
     with pytest.raises(ValueError):
         compute_ledger(c, [], window_start=date(2025, 9, 1),
                        window_end=date(2025, 9, 30))
+
+
+def test_makeup_resolves_missed_session():
+    c = _commitment(duration=30)
+    logs = [
+        ServiceLog(id="miss-1", commitment_id="c1", date=date(2025, 9, 4),
+                   minutes_delivered=0, status=LogStatus.MISSED,
+                   excused=ExcusedClass.UNEXCUSED),
+        ServiceLog(id="mk-1", commitment_id="c1", date=date(2025, 9, 20),
+                   minutes_delivered=30, status=LogStatus.DELIVERED,
+                   makeup_for="miss-1"),
+    ]
+    led = compute_ledger(c, logs, window_start=date(2025, 9, 1),
+                         window_end=date(2025, 9, 30), required_sessions=1)
+    assert led.resolved_by_makeup_minutes == 30
+    assert led.unexcused_shortfall_minutes == 0  # cured, no longer owed
+    assert led.unlogged_sessions == 0            # the make-up isn't a scheduled slot
+    assert accounting_residual(led) == 0
+
+
+def test_partial_makeup_leaves_remainder_owed():
+    c = _commitment(duration=30)
+    logs = [
+        ServiceLog(id="miss-1", commitment_id="c1", date=date(2025, 9, 4),
+                   minutes_delivered=0, status=LogStatus.MISSED,
+                   excused=ExcusedClass.UNEXCUSED),
+        ServiceLog(id="mk-1", commitment_id="c1", date=date(2025, 9, 20),
+                   minutes_delivered=20, status=LogStatus.DELIVERED,
+                   makeup_for="miss-1"),
+    ]
+    led = compute_ledger(c, logs, window_start=date(2025, 9, 1),
+                         window_end=date(2025, 9, 30), required_sessions=1)
+    assert led.resolved_by_makeup_minutes == 20
+    assert led.unexcused_shortfall_minutes == 10  # the uncured remainder
+    assert accounting_residual(led) == 0

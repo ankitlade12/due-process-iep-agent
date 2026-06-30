@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from ..models import ExcusedClass, LogStatus, ServiceLog
+from ..privacy import Redactor, redact_for_cloud
 from .client import LLMClient
 
 CONFIDENCE_THRESHOLD = 0.6
@@ -180,13 +181,15 @@ def classify_reason(
     *,
     client: Optional[LLMClient] = None,
     context: str = "",
+    redactor: Optional[Redactor] = None,
 ) -> ReasonClassification:
     """Classify a single free-text reason.
 
     Uses Qwen when ``client`` is available, else the transparent keyword rules.
+    A ``redactor`` scrubs PII from the reason before any cloud call.
     """
     if client is not None and client.available:
-        return _llm(text, client, context)
+        return _llm(redact_for_cloud(text, redactor), client, context)
     return _rule_based(text)
 
 
@@ -195,6 +198,7 @@ def classify_logs(
     *,
     client: Optional[LLMClient] = None,
     reclassify: bool = False,
+    redactor: Optional[Redactor] = None,
 ) -> ClassificationOutcome:
     """Classify the reasons on missed/short logs, in place.
 
@@ -215,7 +219,7 @@ def classify_logs(
         if text in cache:
             rc = cache[text]
         else:
-            rc = classify_reason(text, client=client)
+            rc = classify_reason(text, client=client, redactor=redactor)
             cache[text] = rc
         outcome.classifications[log.id] = rc
         if rc.needs_human:

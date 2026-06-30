@@ -166,6 +166,38 @@ class LLMClient:
         result = self.complete(system, user, model=model, json_mode=True)
         return _parse_json_object(result.text)
 
+    def complete_vision(
+        self,
+        prompt: str,
+        image_b64: str,
+        *,
+        model: Optional[str] = None,
+        mime: str = "image/png",
+        system: str = "",
+    ) -> LLMResult:
+        """Multimodal completion over one image (for scanned IEPs / photos).
+
+        Defaults to the vision model (qwen3.7-plus). The image is passed inline as
+        a base64 data URL, per the OpenAI-compatible multimodal format.
+        """
+        client = self._ensure()
+        model = model or self.config.vision_model
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url",
+                 "image_url": {"url": f"data:{mime};base64,{image_b64}"}},
+            ],
+        })
+        resp = client.chat.completions.create(
+            model=model, messages=messages, temperature=self.config.temperature)
+        return LLMResult(text=resp.choices[0].message.content or "",
+                         model=model, raw=resp)
+
 
 def _parse_json_object(text: str) -> dict:
     """Parse a JSON object, tolerating a stray ```json fence if one slips in."""

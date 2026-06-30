@@ -16,6 +16,8 @@ dependencies = []
 [project.optional-dependencies]
 # Bounded LLM layer (Alibaba Cloud Model Studio is OpenAI-compatible).
 llm = ["openai>=1.40"]
+# Ingesting real documents (PDF text extraction).
+ingest = ["pypdf>=4.0"]
 # Dev / test.
 dev = ["pytest>=8.0"]
 

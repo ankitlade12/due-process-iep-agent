@@ -167,12 +167,38 @@ due_process/
   grounding.py       evidence-by-ID; rejects ungrounded claims
   analysis.py        the deterministic pipeline the agent calls per commitment
   agent.py           Track 4 orchestrator with human-in-the-loop checkpoints
+  privacy.py         FERPA PII redaction before any cloud call
+  ingest.py          real-document ingestion (CSV/PDF logs, Qwen-vision IEP)
+  store.py           SQLite case store + the deadline guard (alerts/agenda)
+  filing.py          per-state filing guidance + filable evidence packet
+  systemic.py        de-identified, k-anonymous cross-family aggregation
   scenarios.py       synthetic scenarios with ground-truth labels
   llm/               bounded LLM layer (client + classification/extraction/narrative)
   instruments/       fixed cited templates + the human approval gate
   evaluation/        labeled dataset + metrics + grounded-vs-baseline runner
   examples/          runnable demos
 ```
+
+## Built for real records, not just clean demos
+
+The features that move it from "correct engine on synthetic data" to "a parent or
+advocate can run it on a real child's actual records":
+
+- **FERPA-safe by default** (`privacy.py`) — student name, DOB, ID, email/phone are
+  redacted *before* any text reaches the cloud model, and a redaction miss fails
+  loudly. Session dates are preserved — they're the evidence.
+- **Ingests what people actually have** (`ingest.py`) — service logs from CSV/TSV
+  (with fuzzy header mapping and status inference), text from PDFs, and **scanned
+  IEPs read by Qwen's vision model**.
+- **A year-round tool with a deadline guard** (`store.py`) — a SQLite case store
+  that remembers across the year and surfaces an *agenda*: what's material, what's
+  owed, and which filing deadline is approaching — because parents lose valid
+  claims by losing track.
+- **Make-up reconciliation** (`ledger.py`) — when the school makes up a missed
+  session, that shortfall is marked cured and drops out of what's owed.
+- **Actually filable** (`filing.py`) — per-state filing guidance plus an exported
+  **evidence packet**: the complaint, a numbered exhibit index (the IEP line + the
+  exact log entries), and the cited authorities, ready to send.
 
 ## Not legal advice
 

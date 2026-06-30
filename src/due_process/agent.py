@@ -39,6 +39,7 @@ from .models import (
     ServiceCommitment,
     ServiceLog,
 )
+from .privacy import Redactor
 
 
 # --------------------------------------------------------------------------- #
@@ -132,11 +133,19 @@ def run_enforcement(
     client: Optional[LLMClient] = None,
     policy: Optional[ApprovalPolicy] = None,
     config: MaterialityConfig = DEFAULT_CONFIG,
+    redact: bool = True,
 ) -> AgentRun:
-    """Execute the enforcement workflow end to end."""
+    """Execute the enforcement workflow end to end.
+
+    ``redact`` (on by default) scrubs student PII from any text sent to the cloud
+    model, using the identifiers in ``context`` — FERPA-safe by default.
+    """
     policy = policy or ApprovalPolicy()
     today = now.date()
     run = AgentRun()
+    redactor = (Redactor.for_case(student_name=context.student_name,
+                                  parent_name=context.parent_name)
+                if redact else None)
 
     def log_step(step: str, detail: str) -> None:
         run.audit.append(AuditEntry(step=step, detail=detail, at=now))
@@ -145,7 +154,7 @@ def run_enforcement(
     if commitments is None:
         run.extracted = extract_commitments(
             iep_text or "", client=client,
-            source_uri="oss://ieps/this-student.pdf",
+            source_uri="oss://ieps/this-student.pdf", redactor=redactor,
         )
         method = run.extracted[0].method if run.extracted else "none"
         log_step("extract",
@@ -181,7 +190,7 @@ def run_enforcement(
                  f"commitment {target}.")
 
     # 2) Classify missed/short reasons ----------------------------------------
-    run.classification = classify_logs(logs, client=client)
+    run.classification = classify_logs(logs, client=client, redactor=redactor)
     log_step("classify",
              f"Classified reasons; {run.classification.needs_human_count} "
              f"flagged ambiguous for human review.")

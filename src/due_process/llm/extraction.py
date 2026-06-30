@@ -26,6 +26,7 @@ from ..models import (
     SourceKind,
     SourceRef,
 )
+from ..privacy import Redactor, redact_for_cloud
 from .client import LLMClient
 
 _SERVICE_KEYWORDS = [
@@ -217,8 +218,14 @@ def extract_commitments(
     *,
     client: Optional[LLMClient] = None,
     source_uri: str = "",
+    redactor: Optional[Redactor] = None,
 ) -> List[ExtractedCommitment]:
-    """Extract commitments from IEP text, flagged for human confirmation."""
+    """Extract commitments from IEP text, flagged for human confirmation.
+
+    When a ``redactor`` is supplied, the IEP text is scrubbed of student PII
+    before it is sent to the cloud model (the rule-based path runs locally and
+    needs no redaction).
+    """
     if client is not None and client.available:
-        return _llm(iep_text, client, source_uri)
+        return _llm(redact_for_cloud(iep_text, redactor), client, source_uri)
     return _rule_based(iep_text, source_uri)

@@ -198,6 +198,9 @@ class ServiceLog:
     missed_reason_text: str = ""
     excused: ExcusedClass = ExcusedClass.UNCLASSIFIED
     source_ref: Optional[SourceRef] = None
+    # When set, this (delivered) session makes up for the missed session with
+    # this id — resolving that shortfall rather than adding a new one.
+    makeup_for: Optional[str] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -237,6 +240,10 @@ class DeliveryLedger:
     # the actionable shortfall — the human-in-the-loop guard, never auto-resolved.
     ambiguous_sessions: int = 0
     ambiguous_minutes: int = 0
+
+    # Missed minutes the school later made up — cured, so no longer owed.
+    resolved_by_makeup_sessions: int = 0
+    resolved_by_makeup_minutes: int = 0
 
     @property
     def unexcused_shortfall_minutes(self) -> int:

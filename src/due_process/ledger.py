@@ -106,6 +106,15 @@ def compute_ledger(
     window_logs = _logs_in_window(
         logs, commitment.id, window_start, window_end
     )
+    # A make-up session (makeup_for set) is not a scheduled session; it cures a
+    # prior miss. Separate the two, and tally make-up minutes per missed session.
+    makeup_logs = [lg for lg in window_logs if lg.makeup_for]
+    scheduled_logs = [lg for lg in window_logs if not lg.makeup_for]
+    makeup_minutes_by_miss: dict = {}
+    for ml in makeup_logs:
+        makeup_minutes_by_miss[ml.makeup_for] = (
+            makeup_minutes_by_miss.get(ml.makeup_for, 0)
+            + max(0, ml.minutes_delivered))
 
     delivered_sessions = 0
     delivered_minutes = 0
@@ -117,8 +126,10 @@ def compute_ledger(
     short_shortfall_minutes = 0
     ambiguous_sessions = 0
     ambiguous_minutes = 0
+    resolved_by_makeup_sessions = 0
+    resolved_by_makeup_minutes = 0
 
-    for log in window_logs:
+    for log in scheduled_logs:
         delivered = max(0, log.minutes_delivered)
         delivered_minutes += delivered
         # The gap is what the IEP required for this session but did not get.
@@ -133,7 +144,17 @@ def compute_ledger(
             short_sessions += 1
         # MISSED sessions contribute their whole duration as the gap.
 
-        # Allocate the gap by the human-confirmed excused classification.
+        # A later make-up session cures part or all of this shortfall.
+        available = makeup_minutes_by_miss.get(log.id, 0)
+        if gap > 0 and available > 0:
+            resolved_here = min(gap, available)
+            resolved_by_makeup_minutes += resolved_here
+            resolved_by_makeup_sessions += 1
+            gap -= resolved_here
+            if gap == 0:
+                continue
+
+        # Allocate the remaining gap by the human-confirmed classification.
         if log.excused == ExcusedClass.EXCUSED:
             excused_minutes += gap
             if log.status == LogStatus.MISSED:
@@ -148,7 +169,7 @@ def compute_ledger(
             ambiguous_sessions += 1
             ambiguous_minutes += gap
 
-    unlogged_sessions = max(0, required_sessions - len(window_logs))
+    unlogged_sessions = max(0, required_sessions - len(scheduled_logs))
     unlogged_minutes = unlogged_sessions * duration
 
     return DeliveryLedger(
@@ -169,6 +190,8 @@ def compute_ledger(
         unlogged_minutes=unlogged_minutes,
         ambiguous_sessions=ambiguous_sessions,
         ambiguous_minutes=ambiguous_minutes,
+        resolved_by_makeup_sessions=resolved_by_makeup_sessions,
+        resolved_by_makeup_minutes=resolved_by_makeup_minutes,
     )
 
 
@@ -185,6 +208,7 @@ def accounting_residual(ledger: DeliveryLedger) -> int:
         + ledger.excused_minutes
         + ledger.unexcused_shortfall_minutes
         + ledger.ambiguous_minutes
+        + ledger.resolved_by_makeup_minutes
         + ledger.unlogged_minutes
     )
     return ledger.required_minutes - allocated
