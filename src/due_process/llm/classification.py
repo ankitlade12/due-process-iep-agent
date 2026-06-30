@@ -203,6 +203,7 @@ def classify_logs(
     and already-classified logs (unless ``reclassify``) are skipped.
     """
     outcome = ClassificationOutcome()
+    cache: dict = {}  # identical reason text -> one classification (saves tokens)
     for log in logs:
         if log.status not in (LogStatus.MISSED, LogStatus.SHORT):
             continue
@@ -210,7 +211,12 @@ def classify_logs(
             ExcusedClass.UNCLASSIFIED, ExcusedClass.AMBIGUOUS
         ):
             continue
-        rc = classify_reason(log.missed_reason_text, client=client)
+        text = log.missed_reason_text
+        if text in cache:
+            rc = cache[text]
+        else:
+            rc = classify_reason(text, client=client)
+            cache[text] = rc
         outcome.classifications[log.id] = rc
         if rc.needs_human:
             log.excused = ExcusedClass.AMBIGUOUS
