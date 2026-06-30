@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets / cloud creds — never commit these
+*.key
+*.pem
+credentials.json
+secrets.*
+.env.*
+
+# Sensitive student records (FERPA) — keep real IEPs/logs out of git
+data/private/
+*.iep.pdf
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

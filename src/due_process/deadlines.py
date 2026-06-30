@@ -1,0 +1,117 @@
+"""The statute-of-limitations clock.
+
+A parent who misses the filing deadline loses the remedy no matter how strong the
+case, so the deadline is computed deterministically and surfaced with days
+remaining. The federal floor is two years from the date the parent knew or should
+have known of the violation (20 U.S.C. 1415(b)(6), (f)(3)(C)). States may set a
+different period and their own discovery rule, so the period is localizable.
+
+``today`` is always passed in explicitly — never read from a hidden clock — so the
+math is reproducible and unit-testable.
+"""
+
+from __future__ import annotations
+
+from datetime import date
+
+from .models import DeadlineClock, Violation
+
+# Federal floor. Two years unless a state overrides.
+DEFAULT_LIMITATIONS_YEARS = 2
+
+# Per-state limitations period in years. The federal floor is two years; a few
+# states adopt a different window or a distinct discovery rule. Populate this map
+# only with values verified against the state's special-education regulations —
+# an unverified entry is worse than falling back to the federal default. States
+# absent from this map use DEFAULT_LIMITATIONS_YEARS.
+STATE_LIMITATIONS_YEARS: dict[str, int] = {
+    # "TX": 1,   # example shape only — verify before enabling
+}
+
+# Surface a deadline as urgent when fewer than this many days remain.
+URGENT_THRESHOLD_DAYS = 90
+
+
+def limitations_years_for(state: str = "") -> int:
+    """The limitations period (years) for a state, defaulting to the federal floor."""
+    return STATE_LIMITATIONS_YEARS.get(state.upper(), DEFAULT_LIMITATIONS_YEARS)
+
+
+def add_years(d: date, years: int) -> date:
+    """Add whole years to a date, handling the Feb 29 edge.
+
+    Feb 29 plus a non-leap number of years lands on Feb 28, the conventional
+    treatment when the anniversary day does not exist.
+    """
+    try:
+        return d.replace(year=d.year + years)
+    except ValueError:
+        # Only Feb 29 -> non-leap year reaches here.
+        return d.replace(year=d.year + years, day=28)
+
+
+def compute_deadline(
+    violation_id: str,
+    discovery_date: date,
+    today: date,
+    *,
+    state: str = "",
+    limitations_years: int | None = None,
+) -> DeadlineClock:
+    """Compute the SoL clock for a violation.
+
+    Args:
+        violation_id: the violation this clock is for.
+        discovery_date: when the parent knew or should have known.
+        today: the reference date for ``days_remaining``.
+        state: two-letter state code, used to localize the period.
+        limitations_years: explicit override of the period in years.
+    """
+    years = (
+        limitations_years
+        if limitations_years is not None
+        else limitations_years_for(state)
+    )
+    expiry = add_years(discovery_date, years)
+    days_remaining = (expiry - today).days
+    return DeadlineClock(
+        violation_id=violation_id,
+        discovery_date=discovery_date,
+        sol_expiry_date=expiry,
+        days_remaining=days_remaining,
+        state=state,
+        limitations_years=years,
+    )
+
+
+def compute_deadline_for_violation(
+    violation: Violation,
+    today: date,
+    *,
+    discovery_date: date | None = None,
+    state: str = "",
+    limitations_years: int | None = None,
+) -> DeadlineClock:
+    """Convenience wrapper keyed off a Violation.
+
+    Defaults the discovery date to the end of the violation window when one is
+    not supplied — a conservative proxy for "when the shortfall became evident."
+    A real deployment should set the actual discovery date.
+    """
+    return compute_deadline(
+        violation.id,
+        discovery_date if discovery_date is not None else violation.window_end,
+        today,
+        state=state,
+        limitations_years=limitations_years,
+    )
+
+
+def is_expired(clock: DeadlineClock) -> bool:
+    return clock.days_remaining < 0
+
+
+def is_urgent(clock: DeadlineClock,
+              threshold_days: int = URGENT_THRESHOLD_DAYS) -> bool:
+    """True when the deadline is near (or past) and warrants prompt action."""
+    return clock.days_remaining < threshold_days

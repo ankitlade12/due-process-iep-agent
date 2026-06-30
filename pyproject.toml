@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "due-process"
+version = "0.1.0"
+description = "An IEP enforcement agent: tracks whether a school delivers the special-education services it promised, proves the gap, computes what is owed, and drafts the cited remedy."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "ankitlade12" }]
+keywords = ["IEP", "IDEA", "special-education", "compliance", "FAPE", "qwen"]
+dependencies = []
+
+[project.optional-dependencies]
+# Bounded LLM layer (Alibaba Cloud Model Studio is OpenAI-compatible).
+llm = ["openai>=1.40"]
+# Dev / test.
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+due-process = "due_process.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
