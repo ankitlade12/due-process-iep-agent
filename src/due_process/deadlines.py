@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from .models import DeadlineClock, Violation
+from .models import DeadlineClock
 
 # Federal floor. Two years unless a state overrides.
 DEFAULT_LIMITATIONS_YEARS = 2
@@ -134,29 +134,6 @@ def due_process_deadline(
         sol_expiry_date=expiry, days_remaining=(expiry - today).days,
         state=state, limitations_years=years,
         remedy="due_process", basis="usc_1415_sol",
-    )
-
-
-def compute_deadline_for_violation(
-    violation: Violation,
-    today: date,
-    *,
-    discovery_date: date | None = None,
-    state: str = "",
-    limitations_years: int | None = None,
-) -> DeadlineClock:
-    """Convenience wrapper keyed off a Violation.
-
-    Defaults the discovery date to the end of the violation window when one is
-    not supplied — a conservative proxy for "when the shortfall became evident."
-    A real deployment should set the actual discovery date.
-    """
-    return compute_deadline(
-        violation.id,
-        discovery_date if discovery_date is not None else violation.window_end,
-        today,
-        state=state,
-        limitations_years=limitations_years,
     )
 
 

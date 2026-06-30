@@ -8,6 +8,19 @@ Studio** — the Alibaba Cloud OpenAI-compatible endpoint
 steps (extraction, classification, narrative), while the deterministic core does
 all the math and the law.
 
+## What Devpost requires (two parts)
+
+1. **A code file that uses the Qwen Cloud base URL** — ✅ satisfied. The base URL
+   `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` is in
+   `../src/due_process/llm/client.py` and is what `handler.py` here calls on
+   every request. (Token Plan: override with
+   `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`.)
+2. **A screenshot of running resources in the Alibaba Cloud Workbench** — you
+   provide this after `s deploy`: screenshot the **Function Compute** console
+   showing the `due-process-agent` function (and/or an invocation log), or the
+   Qwen Cloud usage/logs page showing the API calls. Attach it to the Devpost
+   submission.
+
 ## Files
 
 | File | Role |

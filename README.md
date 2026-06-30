@@ -124,8 +124,17 @@ python -m due_process.examples.vision_demo
 # 5) The evaluation — grounded system vs an ungrounded raw-Qwen baseline:
 python -m due_process.evaluation.run_eval
 
-# Test suite (123 tests, all offline):
+# Test suite (132 tests, all offline):
 pytest
+```
+
+Or use the installed CLI on real files:
+
+```bash
+due-process analyze --logs service_log.csv --service speech --freq 3 \
+    --duration 30 --periods 36 --state NY --draft --packet complaint_packet.txt
+due-process pwn --file prior_written_notice.txt        # check the 7 elements
+due-process vision --image scanned_iep.png             # Qwen reads the page
 ```
 
 Everything above runs **with no API key**, using transparent rule-based / template
@@ -155,7 +164,15 @@ against the real endpoint):
 python -m due_process.examples.qwen_smoketest
 ```
 
-Deployment proof for Alibaba Cloud Function Compute lives in [`deploy/`](deploy/).
+### Proof of deployment (Alibaba Cloud)
+
+The project calls the **Qwen Cloud (Alibaba Cloud)** API. The base URL is in
+[`src/due_process/llm/client.py`](src/due_process/llm/client.py) —
+`https://dashscope-intl.aliyuncs.com/compatible-mode/v1` — and is used by every
+LLM call, by the live check `python -m due_process.examples.qwen_smoketest`, and
+by the Function Compute handler in [`deploy/`](deploy/) (`handler.py` + `s.yaml`),
+which invokes Model Studio on every request. Token Plan users override the base
+URL via `DUE_PROCESS_LLM_BASE_URL` (see `.env.example`).
 
 ## Package layout
 

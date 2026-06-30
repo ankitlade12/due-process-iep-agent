@@ -23,6 +23,7 @@ from typing import List, Optional
 
 from .llm.client import LLMClient
 from .models import ExcusedClass, LogStatus, ServiceLog, SourceKind, SourceRef
+from .privacy import Redactor
 
 # Lower-cased header text -> canonical field. Covers the variants schools use.
 _HEADER_ALIASES = {
@@ -177,15 +178,23 @@ def read_iep_image(
     client: LLMClient,
     *,
     prompt: str = _VISION_PROMPT,
+    redactor: Optional[Redactor] = None,
 ) -> str:
     """Transcribe a scanned/photographed IEP page via Qwen's vision model.
 
     Returns the services text, ready to pass to
-    :func:`due_process.llm.extraction.extract_commitments`.
+    :func:`due_process.llm.extraction.extract_commitments`. When a ``redactor`` is
+    supplied, the *returned transcription* is scrubbed of known PII so it is safe
+    to store or display. (The image itself is still sent to the cloud, which on a
+    real IEP contains PII — redact the image or use the self-hosted model for
+    fully private vision.)
     """
     import base64
 
     data = Path(image_path).read_bytes()
     b64 = base64.b64encode(data).decode("ascii")
     mime = "image/png" if image_path.lower().endswith("png") else "image/jpeg"
-    return client.complete_vision(prompt, b64, mime=mime).text
+    text = client.complete_vision(prompt, b64, mime=mime).text
+    if redactor is not None:
+        text, _ = redactor.redact(text)
+    return text

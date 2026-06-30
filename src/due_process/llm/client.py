@@ -20,6 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+# PROOF OF DEPLOYMENT — this is the Qwen Cloud (Alibaba Cloud) API base URL the
+# project calls. Token Plan users override via DUE_PROCESS_LLM_BASE_URL with:
+#   https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 # Maps the spec's intended roles onto real Qwen Cloud model ids.
