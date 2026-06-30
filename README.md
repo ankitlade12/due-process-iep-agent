@@ -116,6 +116,15 @@ The code is provider-pluggable: every Qwen-backed task has a deterministic
 fallback, so the system degrades gracefully to offline rules and upgrades to Qwen
 the moment `DASHSCOPE_API_KEY` is present.
 
+Verify the live integration (exercises extraction, classification, and narrative
+against the real endpoint):
+
+```bash
+python -m due_process.examples.qwen_smoketest
+```
+
+Deployment proof for Alibaba Cloud Function Compute lives in [`deploy/`](deploy/).
+
 ## Package layout
 
 ```

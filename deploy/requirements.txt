@@ -1,0 +1,3 @@
+# Function Compute runtime dependencies.
+# build.sh installs the due_process package itself (from the repo root) plus this.
+openai>=1.40

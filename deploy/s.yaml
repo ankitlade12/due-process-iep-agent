@@ -1,0 +1,44 @@
+# Serverless Devs (v3) — deploy Due Process to Alibaba Cloud Function Compute.
+#
+#   npm install -g @serverless-devs/s
+#   s config add            # add your Alibaba Cloud AccessKey (alias: default)
+#   export DASHSCOPE_API_KEY=sk-...   # your Qwen Cloud key
+#   ./build.sh              # bundle the due_process package + openai into ./dist
+#   s deploy
+#   s invoke                # runs the worked example; or: s invoke -e '{...}'
+#
+# This is the proof-of-deployment: the deployed function invokes Qwen Cloud
+# Model Studio (an Alibaba Cloud API) on every request.
+
+edition: 3.0.0
+name: due-process-iep-agent
+access: default
+
+vars:
+  region: ap-southeast-1   # Singapore — Qwen Cloud / Model Studio primary region
+
+resources:
+  due-process-agent:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: due-process-agent
+      description: IEP enforcement agent — invokes Qwen Cloud Model Studio
+      runtime: python3.10
+      handler: handler.handler
+      timeout: 120
+      memorySize: 1024
+      diskSize: 512
+      code: ./dist
+      environmentVariables:
+        DASHSCOPE_API_KEY: ${env.DASHSCOPE_API_KEY}
+        DUE_PROCESS_ORCHESTRATOR_MODEL: qwen3.7-max
+        DUE_PROCESS_WORKHORSE_MODEL: qwen3.7-plus
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
