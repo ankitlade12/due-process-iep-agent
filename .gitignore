@@ -18,6 +18,7 @@ venv/
 credentials.json
 secrets.*
 .env.*
+!.env.example
 
 # Sensitive student records (FERPA) — keep real IEPs/logs out of git
 data/private/
@@ -27,3 +28,6 @@ data/private/
 .DS_Store
 .idea/
 .vscode/
+
+# Local tooling config (machine-specific)
+.claude/

@@ -169,6 +169,18 @@ _PROVISIONS: List[LegalProvision] = [
         url=_cfr("300.503"),
     ),
     LegalProvision(
+        id="cfr_300_613",
+        short_label="34 C.F.R. § 300.613",
+        citation="34 C.F.R. § 300.613",
+        kind=AuthorityKind.REGULATION,
+        governs="Parent right to inspect and review education records "
+                "(without unnecessary delay, before any IEP meeting, and in no "
+                "case more than 45 days after the request)",
+        agent_use="Legal basis for the service-log request — the parent's right "
+                  "to the records that document delivery.",
+        url=_cfr("300.613"),
+    ),
+    LegalProvision(
         id="cfr_300_504",
         short_label="34 C.F.R. § 300.504",
         citation="34 C.F.R. § 300.504",

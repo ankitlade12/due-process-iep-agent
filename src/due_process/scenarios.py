@@ -47,6 +47,14 @@ class ScenarioData:
     instructional_periods: int
     discovery_date: date
     expected: Dict = field(default_factory=dict)
+    iep_text: str = ""  # the IEP services-page text, for the extraction step
+
+
+# The services-page text for the flagship scenario — feeds the extraction step.
+WORKED_EXAMPLE_IEP_TEXT = (
+    "Special Education and Related Services\n"
+    "Speech-Language Therapy: 3 x 30 minutes per week, individual, pull-out.\n"
+)
 
 
 def _session_date(start: date, index: int) -> date:
@@ -99,25 +107,33 @@ def _log(commitment_id: str, index: int, d: date, *, status: LogStatus,
     )
 
 
-def worked_example_speech(start: date = date(2025, 9, 2)) -> ScenarioData:
+def worked_example_speech(start: date = date(2025, 9, 2),
+                          classified: bool = True) -> ScenarioData:
     """The spec's worked example: 108 required, 72 delivered, 12 excused, 24 not.
 
     The 24 unexcused missed sessions are spread (never 3 in a row) so the
     materiality verdict is driven by the 22% percentage rule, matching the spec's
     emphasis rather than the consecutive-sessions rule.
+
+    With ``classified=False`` the missed logs keep their reason text but are left
+    ``UNCLASSIFIED`` — for exercising the agent's classification step.
     """
     commitment = _speech_commitment(start)
+
+    def _excused(true_label: ExcusedClass) -> ExcusedClass:
+        return true_label if classified else ExcusedClass.UNCLASSIFIED
+
     logs: List[ServiceLog] = []
     for i in range(108):
         d = _session_date(start, i)
         mod = i % 9
         if mod in (2, 5):  # 24 of 108 -> unexcused
             logs.append(_log(commitment.id, i, d, status=LogStatus.MISSED,
-                             minutes=0, excused=ExcusedClass.UNEXCUSED,
+                             minutes=0, excused=_excused(ExcusedClass.UNEXCUSED),
                              reason="Provider absent, no substitute"))
         elif mod == 8:     # 12 of 108 -> excused
             logs.append(_log(commitment.id, i, d, status=LogStatus.MISSED,
-                             minutes=0, excused=ExcusedClass.EXCUSED,
+                             minutes=0, excused=_excused(ExcusedClass.EXCUSED),
                              reason="Student absent"))
         else:              # 72 of 108 -> delivered
             logs.append(_log(commitment.id, i, d, status=LogStatus.DELIVERED,
@@ -133,6 +149,7 @@ def worked_example_speech(start: date = date(2025, 9, 2)) -> ScenarioData:
         window_end=window_end,
         instructional_periods=36,
         discovery_date=window_end,
+        iep_text=WORKED_EXAMPLE_IEP_TEXT,
         expected={
             "required_sessions": 108,
             "required_minutes": 3240,
