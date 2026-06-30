@@ -225,6 +225,98 @@ def incomplete_logs_speech(start: date = date(2025, 9, 2)) -> ScenarioData:
     )
 
 
+def _spread_indices(required: int, count: int) -> List[int]:
+    """Pick ``count`` session indices spaced apart (so they are not consecutive)."""
+    if count <= 0:
+        return []
+    step = max(2, required // count)
+    idx: List[int] = []
+    i = 0
+    while len(idx) < count and i < required:
+        idx.append(i)
+        i += step
+    j = 0
+    while len(idx) < count:
+        if j not in idx:
+            idx.append(j)
+        j += 1
+    return sorted(idx)
+
+
+# (student_id, delivered, excused, unexcused) over 108 required speech sessions.
+_DISTRICT_PATTERNS = [
+    ("S-001", 72, 12, 24),   # material — the worked example
+    ("S-002", 60, 0, 48),    # material — severe
+    ("S-003", 108, 0, 0),    # compliant
+    ("S-004", 88, 3, 17),    # material — just over the line
+    ("S-005", 100, 3, 5),    # not material — minor, spread
+    ("S-006", 70, 0, 38),    # material
+    ("S-007", 108, 0, 0),    # compliant
+    ("S-008", 80, 4, 24),    # material
+    ("S-009", 66, 6, 36),    # material
+    ("S-010", 108, 0, 0),    # compliant
+    ("S-011", 90, 3, 15),    # not material — borderline below, spread
+    ("S-012", 84, 0, 24),    # material
+]
+
+
+def district_caseload(district: str = "Springfield SD",
+                      start: date = date(2025, 9, 2)):
+    """A district's worth of de-identified students for the systemic demo.
+
+    Twelve students all receiving speech services — a realistic mix of material
+    failures and compliant cases. Returns (district, students, window_start,
+    window_end, instructional_periods) where each student is
+    (student_id, commitment, logs).
+    """
+    required = 108
+    students = []
+    for sid, delivered, excused, unexcused in _DISTRICT_PATTERNS:
+        cid = f"svc-{sid}"
+        commitment = ServiceCommitment(
+            id=cid,
+            service_type=ServiceType.SPEECH_LANGUAGE,
+            frequency_count=3,
+            frequency_period=FrequencyPeriod.WEEK,
+            duration_minutes=30,
+            setting=DeliverySetting.INDIVIDUAL,
+            location=ServiceLocation.PULL_OUT,
+            effective_start=start,
+            source_ref=SourceRef(kind=SourceKind.IEP, locator="p.7 §Services",
+                                 description=f"{sid} speech line", record_id=cid),
+        )
+        labels = [""] * required
+        for k in _spread_indices(required, unexcused):
+            labels[k] = "unexcused"
+        remaining = [k for k in range(required) if not labels[k]]
+        ptr = 0
+        for _ in range(excused):
+            labels[remaining[ptr]] = "excused"; ptr += 1
+        for _ in range(delivered):
+            labels[remaining[ptr]] = "delivered"; ptr += 1
+
+        logs = []
+        for idx, kind in enumerate(labels):
+            if not kind:
+                continue
+            d = _session_date(start, idx)
+            if kind == "delivered":
+                logs.append(_log(cid, idx, d, status=LogStatus.DELIVERED,
+                                 minutes=30, excused=ExcusedClass.UNCLASSIFIED,
+                                 setting=DeliverySetting.INDIVIDUAL))
+            elif kind == "excused":
+                logs.append(_log(cid, idx, d, status=LogStatus.MISSED, minutes=0,
+                                 excused=ExcusedClass.EXCUSED,
+                                 reason="Student absent"))
+            else:  # unexcused
+                logs.append(_log(cid, idx, d, status=LogStatus.MISSED, minutes=0,
+                                 excused=ExcusedClass.UNEXCUSED,
+                                 reason="Provider absent, no substitute"))
+        students.append((sid, commitment, logs))
+
+    return district, students, start, _session_date(start, required - 1), 36
+
+
 ALL_SCENARIOS = [
     worked_example_speech,
     compliant_speech,

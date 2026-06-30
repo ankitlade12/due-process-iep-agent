@@ -18,6 +18,29 @@ legal source and a human approving every outbound action.**
 Built for the Qwen Cloud hackathon, **Track 4 (Autopilot Agent)**: an end-to-end
 workflow with a human checkpoint at every critical decision.
 
+## What makes it novel — and who it helps
+
+It's open-source infrastructure for the people who already help families for free,
+not another paid consumer app. Four ideas, layered:
+
+1. **Enforcement, not prep.** Every other AI tool helps you get *ready* for the
+   meeting. This is the only one that checks, all year, whether the school
+   *delivered* — and proves it when it didn't.
+2. **Systemic evidence.** One child's complaint fixes one child. Due Process
+   aggregates shortfalls across many families — with k-anonymity built in — into a
+   *systemic* state complaint (34 C.F.R. 300.151(b)), which forces district-wide
+   relief that fixes services for **every** affected child. No parent-side tool
+   does this. (`python -m due_process.examples.systemic_demo`)
+3. **A force-multiplier for the under-resourced.** Federally-funded Parent
+   Training & Information centers and pro-bono advocates are swamped and have no
+   tooling. This is the open backbone that 10×'s them — multi-case, not one family
+   at a time.
+4. **Built for access.** "Receipts, not lawsuits" — it starts as a friendly
+   record you keep, escalation optional. And it speaks the parent's language: the
+   plain-language summary translates via Qwen, because the enforcement system
+   silently assumes an English-fluent, sophisticated parent and most families
+   aren't.
+
 ## The core design principle: deterministic core, bounded LLM
 
 The thing that makes this credible (and not "trust the LLM") is a hard boundary:
@@ -58,16 +81,19 @@ labeled eval and reports the numbers — including the one that matters most, th
 false-positive rate (telling a parent they have a case when they do not). Against
 an ungrounded baseline with no ledger and no corpus:
 
-| metric | **grounded** | baseline |
+| metric | **grounded** | raw Qwen baseline |
 |---|---|---|
-| precision | 1.00 | 0.75 |
-| recall | 1.00 | 1.00 |
+| precision | 1.00 | 0.67 |
+| recall | 1.00 | 0.67 |
 | false-positive rate | **0.00** | 0.50 |
-| citation accuracy | **1.00** | 0.00 |
+| citation accuracy | **1.00** | 0.52 |
 | compensatory-minutes MAE | **0.0** | n/a |
 
-(Offline figures use a transparent heuristic baseline; with a Qwen key the
-baseline is raw Qwen prompted to find violations and cite the law from memory.)
+Baseline = **raw Qwen with no ledger and no corpus**, prompted to judge material
+failure and cite the law from memory. It both *misses* real violations
+(recall 0.67) and *over-flags* (FPR 0.50), and cites real, on-point law only about
+half the time — exactly the failure modes the deterministic core and the grounding
+corpus remove. (Offline, a transparent heuristic baseline stands in.)
 
 **Honest caveat:** the synthetic labels are constructed to the system's own
 materiality rule, so the grounded 1.00 precision/recall mainly shows the system
@@ -89,7 +115,10 @@ python -m due_process.examples.worked_example
 # 2) Full Track 4 workflow — extract → classify → analyze → draft → approve → send:
 python -m due_process.examples.agent_demo
 
-# 3) The evaluation — grounded system vs an ungrounded baseline:
+# 3) Systemic evidence — a district of families → one de-identified district complaint:
+python -m due_process.examples.systemic_demo
+
+# 4) The evaluation — grounded system vs an ungrounded raw-Qwen baseline:
 python -m due_process.evaluation.run_eval
 
 # Test suite (84 tests, all offline):

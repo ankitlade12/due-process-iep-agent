@@ -107,6 +107,7 @@ class InstrumentType(str, Enum):
     PWN_REQUEST = "pwn_request"
     IEE_REQUEST = "iee_request"
     STATE_COMPLAINT = "state_complaint"
+    SYSTEMIC_COMPLAINT = "systemic_complaint"
     DUE_PROCESS = "due_process"
     MEDIATION_REQUEST = "mediation_request"
 

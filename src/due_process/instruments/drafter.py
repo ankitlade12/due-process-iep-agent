@@ -8,13 +8,13 @@ validated against the corpus; only the factual narrative is written by the LLM
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from typing import List, Optional, Sequence
 
 from .. import corpus
 from ..analysis import CommitmentAnalysis
-from ..grounding import EvidenceBundle, build_evidence_bundle
+from ..grounding import EvidenceBundle
 from ..llm.client import LLMClient
 from ..llm.narrative import summarize_pattern
 from ..models import (
@@ -24,6 +24,7 @@ from ..models import (
     ServiceCommitment,
     SourceRef,
 )
+from ..systemic import SystemicFinding
 
 _DISCLAIMER = (
     "This document is information and drafting support prepared with the "
@@ -207,6 +208,76 @@ def draft_state_complaint(
     return Instrument(
         type=InstrumentType.STATE_COMPLAINT,
         violation_ids=violation_ids,
+        draft_text=body,
+        citations=list(dict.fromkeys(citations)),
+        status=InstrumentStatus.DRAFT,
+    )
+
+
+def draft_systemic_complaint(
+    findings: Sequence[SystemicFinding],
+    context: LetterContext,
+    *,
+    client: Optional[LLMClient] = None,
+) -> Instrument:
+    """Draft a district-wide *systemic* state complaint (34 C.F.R. 300.151(b)).
+
+    Reports aggregate, de-identified patterns — counts and minute totals across
+    many students, never an individual record. A systemic finding obligates the
+    state agency to order district-wide relief, fixing services for every
+    affected child rather than one at a time.
+    """
+    citations: List[str] = [
+        "cfr_300_151_153", "cfr_300_323", "cfr_300_320",
+        "usc_1401_9", "usc_1412_a_1", "van_duyn", "reid_v_dc",
+    ]
+    total_comp = 0
+    sections: List[str] = []
+    for f in findings:
+        citations.extend(f.legal_refs)
+        total_comp += f.total_compensatory_minutes
+        service = f.service_type.value.replace("_", " ")
+        sections.append(
+            f"  - {service}: of {f.n_students_with_service} students receiving "
+            f"this service in {f.district}, {f.n_students_material} "
+            f"({f.material_student_share:.0%}) experienced a material failure to "
+            f"implement. Aggregate unexcused shortfall: {f.total_unexcused_minutes} "
+            f"minutes ({f.aggregate_shortfall_pct:.1%} of required service time). "
+            f"(Reported only because at least {f.k_threshold} students are "
+            f"affected; no individual student is identified.)"
+        )
+
+    body = "\n\n".join([
+        _fmt_date(context.letter_date),
+        f"From: {context.parent_name}\nTo: {context.state_agency_name}; "
+        f"copy to {context.district_name}",
+        f"Re: Systemic State Complaint under IDEA — {context.district_name}",
+        "I. Nature of the Complaint\n"
+        "This is a state complaint under 34 C.F.R. §§ 300.151–300.153. It alleges "
+        "a systemic failure to implement IEPs across the district. Under 34 "
+        "C.F.R. § 300.151(b), where a complaint alleges a failure that affects "
+        "multiple children, the state education agency must resolve the systemic "
+        "issue, not merely the individual case.",
+        "II. The District-Wide Pattern (de-identified)\n" + "\n\n".join(sections),
+        "III. Why This Is a Material, Systemic Failure\n"
+        "The aggregate shortfalls above are computed from service-delivery "
+        "records under the material-failure-to-implement standard (Van Duyn v. "
+        "Baker Sch. Dist.). The breadth across students establishes a systemic, "
+        "not isolated, failure.",
+        "IV. Relief Requested\n"
+        "  1. A finding of systemic failure to implement IEPs district-wide.\n"
+        "  2. District-wide corrective action (staffing, scheduling, and "
+        "monitoring) to prevent recurrence.\n"
+        f"  3. Compensatory services for all affected students, an aggregate "
+        f"equitable starting position of approximately {total_comp} minutes "
+        f"({total_comp / 60:.1f} hours) under Reid v. District of Columbia.",
+        f"Respectfully,\n{context.parent_name}",
+        _citation_block(citations),
+        _DISCLAIMER,
+    ])
+    return Instrument(
+        type=InstrumentType.SYSTEMIC_COMPLAINT,
+        violation_ids=[],
         draft_text=body,
         citations=list(dict.fromkeys(citations)),
         status=InstrumentStatus.DRAFT,

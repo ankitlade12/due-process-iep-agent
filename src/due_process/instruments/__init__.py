@@ -13,12 +13,14 @@ from .drafter import (
     draft_pwn_request,
     draft_service_log_request,
     draft_state_complaint,
+    draft_systemic_complaint,
 )
 
 __all__ = [
     "LetterContext",
     "draft_service_log_request",
     "draft_state_complaint",
+    "draft_systemic_complaint",
     "draft_pwn_request",
     "approve",
     "send",
