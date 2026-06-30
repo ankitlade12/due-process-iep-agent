@@ -95,13 +95,13 @@ failure and cite the law from memory. It both *misses* real violations
 half the time — exactly the failure modes the deterministic core and the grounding
 corpus remove. (Offline, a transparent heuristic baseline stands in.)
 
-**Honest caveat:** the synthetic labels are constructed to the system's own
-materiality rule, so the grounded 1.00 precision/recall mainly shows the system
-applies its standard *consistently* — not that the standard is legally correct.
-What the eval does fairly establish is the contrast: the grounded system avoids
-the baseline's over-flagging (FPR) and never emits an unverifiable citation. A
-real validation needs de-identified IEPs labeled by a special-education advocate
-(on the roadmap).
+**Honest caveat:** most labels are synthetic and constructed to the system's own
+materiality rule, so the headline is the *contrast* with the baseline (lower FPR,
+no unverifiable citations), not proof the threshold is legally perfect. A few
+cases now carry **independent, documented labels** — e.g. *Van Duyn*, where a
+court held a 50% tutoring shortfall material — which the system also gets right.
+Full validation still needs a corpus of advocate-labeled de-identified IEPs (on
+the roadmap).
 
 ## Quick start
 
@@ -118,10 +118,13 @@ python -m due_process.examples.agent_demo
 # 3) Systemic evidence — a district of families → one de-identified district complaint:
 python -m due_process.examples.systemic_demo
 
-# 4) The evaluation — grounded system vs an ungrounded raw-Qwen baseline:
+# 4) Scanned-IEP vision — Qwen reads a (synthetic) IEP image, then it's parsed:
+python -m due_process.examples.vision_demo
+
+# 5) The evaluation — grounded system vs an ungrounded raw-Qwen baseline:
 python -m due_process.evaluation.run_eval
 
-# Test suite (84 tests, all offline):
+# Test suite (123 tests, all offline):
 pytest
 ```
 
@@ -162,7 +165,7 @@ due_process/
   corpus.py          legal grounding corpus (IDEA CFR / U.S.C. / case law)
   ledger.py          deterministic promised-vs-delivered minutes math
   materiality.py     material-failure rule + violation detection + comp estimate
-  deadlines.py       2-year statute-of-limitations clock (leap-year safe, per-state)
+  deadlines.py       filing-deadline clock: 1-yr state complaint + 2-yr due process
   pwn.py             Prior Written Notice 7-element checklist (34 CFR 300.503(b))
   grounding.py       evidence-by-ID; rejects ungrounded claims
   analysis.py        the deterministic pipeline the agent calls per commitment
@@ -190,10 +193,12 @@ advocate can run it on a real child's actual records":
 - **Ingests what people actually have** (`ingest.py`) — service logs from CSV/TSV
   (with fuzzy header mapping and status inference), text from PDFs, and **scanned
   IEPs read by Qwen's vision model**.
-- **A year-round tool with a deadline guard** (`store.py`) — a SQLite case store
-  that remembers across the year and surfaces an *agenda*: what's material, what's
-  owed, and which filing deadline is approaching — because parents lose valid
-  claims by losing track.
+- **A year-round tool with a deadline guard** (`store.py` + `deadlines.py`) — a
+  SQLite case store that remembers across the year and surfaces an *agenda*: what's
+  material, what's owed, and which deadline is approaching. It tracks the two
+  *different* clocks correctly — a **1-year** window for a state complaint (34
+  C.F.R. 300.153(c)) vs. **2 years** for due process (20 U.S.C. 1415) — a trap
+  that otherwise makes parents miss the real, shorter deadline.
 - **Make-up reconciliation** (`ledger.py`) — when the school makes up a missed
   session, that shortfall is marked cured and drops out of what's owed.
 - **Actually filable** (`filing.py`) — per-state filing guidance plus an exported

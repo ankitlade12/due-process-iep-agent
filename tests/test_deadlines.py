@@ -5,9 +5,11 @@ from datetime import date
 from due_process.deadlines import (
     add_years,
     compute_deadline,
+    due_process_deadline,
     is_expired,
     is_urgent,
     limitations_years_for,
+    state_complaint_deadline,
 )
 
 
@@ -57,3 +59,29 @@ def test_explicit_limitations_override():
                              today=date(2026, 1, 1), limitations_years=1)
     assert clock.sol_expiry_date == date(2027, 1, 1)
     assert clock.days_remaining == 365
+
+
+def test_state_complaint_deadline_is_one_year():
+    # 34 C.F.R. 300.153(c): violation within one year of the complaint.
+    clock = state_complaint_deadline("v1", violation_date=date(2025, 9, 2),
+                                     today=date(2026, 6, 30))
+    assert clock.sol_expiry_date == date(2026, 9, 2)
+    assert clock.limitations_years == 1
+    assert clock.remedy == "state_complaint"
+    assert clock.basis == "cfr_300_153"
+
+
+def test_due_process_deadline_is_two_years():
+    # 20 U.S.C. 1415: two years from discovery.
+    clock = due_process_deadline("v1", discovery_date=date(2026, 5, 1),
+                                 today=date(2026, 6, 30))
+    assert clock.sol_expiry_date == date(2028, 5, 1)
+    assert clock.limitations_years == 2
+    assert clock.remedy == "due_process"
+
+
+def test_state_complaint_clock_is_tighter_than_due_process():
+    today = date(2026, 6, 30)
+    sc = state_complaint_deadline("v", date(2025, 9, 2), today)
+    dp = due_process_deadline("v", date(2026, 5, 9), today)
+    assert sc.days_remaining < dp.days_remaining  # the trap this fixes

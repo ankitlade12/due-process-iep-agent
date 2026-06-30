@@ -79,15 +79,19 @@ def render(analysis: CommitmentAnalysis) -> str:
     out.append(f"  {comp.note}")
     out.append("")
 
-    for violation, clock, bundle in zip(
+    for i, (violation, clock, bundle) in enumerate(zip(
         analysis.violations, analysis.deadlines, analysis.bundles
-    ):
+    )):
         out.append(f"VIOLATION: {violation.type.value} "
                    f"({_fmt_minutes(violation.shortfall_minutes)} shortfall)")
         out.append(THIN)
-        out.append(f"  Deadline to file: {clock.sol_expiry_date.isoformat()} "
-                   f"({clock.days_remaining} days remaining, "
-                   f"{clock.limitations_years}-yr SoL)")
+        out.append(f"  State-complaint deadline: {clock.sol_expiry_date.isoformat()} "
+                   f"({clock.days_remaining} days left — 1-yr window, "
+                   f"34 C.F.R. 300.153(c))")
+        if i < len(analysis.due_process_deadlines):
+            dp = analysis.due_process_deadlines[i]
+            out.append(f"  Due-process deadline:     {dp.sol_expiry_date.isoformat()} "
+                       f"({dp.days_remaining} days left — 2-yr, 20 U.S.C. 1415)")
         out.append(f"  Evidence cited:   {len(bundle.log_refs)} log entries, "
                    f"{len(bundle.iep_refs)} IEP ref, "
                    f"{len(bundle.legal_provisions)} legal provisions")

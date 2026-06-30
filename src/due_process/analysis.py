@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional
 
-from .deadlines import compute_deadline_for_violation
+from .deadlines import due_process_deadline, state_complaint_deadline
 from .grounding import EvidenceBundle, build_evidence_bundle
 from .ledger import compute_ledger
 from .materiality import (
@@ -43,7 +43,8 @@ class CommitmentAnalysis:
     materiality: MaterialityFinding
     violations: List[Violation] = field(default_factory=list)
     compensatory: Optional[CompensatoryEstimate] = None
-    deadlines: List[DeadlineClock] = field(default_factory=list)
+    deadlines: List[DeadlineClock] = field(default_factory=list)  # state complaint (1 yr)
+    due_process_deadlines: List[DeadlineClock] = field(default_factory=list)  # 2 yr
     bundles: List[EvidenceBundle] = field(default_factory=list)
 
     @property
@@ -81,12 +82,19 @@ def analyze_commitment(
     materiality = classify_materiality(ledger, logs, config)
     violations = detect_violations(commitment, ledger, logs, materiality)
     compensatory = compensatory_estimate(ledger)
-    deadlines = [
-        compute_deadline_for_violation(
-            v, today, discovery_date=discovery_date, state=state
-        )
-        for v in violations
-    ]
+    # Two distinct clocks per violation. The state-complaint deadline (1 year
+    # from the violation, 34 C.F.R. 300.153(c)) is primary because the tool's
+    # default instrument is a state complaint; the due-process deadline (2 years)
+    # is the alternative. The window start is the conservative anchor — the
+    # earliest point the window's violations could have occurred.
+    deadlines = []
+    due_process_deadlines = []
+    for v in violations:
+        deadlines.append(
+            state_complaint_deadline(v.id, v.window_start, today, state=state))
+        dp_anchor = discovery_date if discovery_date is not None else v.window_end
+        due_process_deadlines.append(
+            due_process_deadline(v.id, dp_anchor, today, state=state))
     bundles = [build_evidence_bundle(v) for v in violations]
 
     return CommitmentAnalysis(
@@ -96,5 +104,6 @@ def analyze_commitment(
         violations=violations,
         compensatory=compensatory,
         deadlines=deadlines,
+        due_process_deadlines=due_process_deadlines,
         bundles=bundles,
     )

@@ -22,13 +22,20 @@ def _worked_analysis():
 def test_federal_default():
     info = filing_instructions("")
     assert "State Education Agency" in info.agency_name
-    assert info.limitations_years == 2
+    assert info.limitations_years == 1  # state complaint: 34 CFR 300.153(c)
 
 
 def test_known_state():
     info = filing_instructions("CA")
     assert "California" in info.agency_name
     assert info.verify_required is True
+
+
+def test_new_york_has_real_filing_address():
+    info = filing_instructions("NY")
+    assert "NYSED" in info.agency_name or "New York" in info.agency_name
+    assert "Albany" in info.how_to_file        # the verified filing address
+    assert info.url.startswith("https://www.nysed.gov")
 
 
 def test_unknown_state_falls_back_to_federal():

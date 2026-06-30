@@ -310,11 +310,13 @@ class DeadlineClock:
     """
 
     violation_id: str
-    discovery_date: date
+    discovery_date: date          # the date the clock runs from (anchor)
     sol_expiry_date: date
     days_remaining: int
     state: str = ""
     limitations_years: int = 2
+    remedy: str = "due_process"   # "state_complaint" (1 yr) | "due_process" (2 yr)
+    basis: str = "usc_1415_sol"   # corpus id grounding this deadline
 
 
 @dataclass

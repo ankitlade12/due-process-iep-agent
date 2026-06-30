@@ -208,6 +208,18 @@ _PROVISIONS: List[LegalProvision] = [
         url=_cfr("300.151"),
     ),
     LegalProvision(
+        id="cfr_300_153",
+        short_label="34 C.F.R. § 300.153(c)",
+        citation="34 C.F.R. § 300.153(c)",
+        kind=AuthorityKind.REGULATION,
+        governs="State complaint filing timeline: the complaint must allege a "
+                "violation that occurred not more than one year prior to the "
+                "date the complaint is received",
+        agent_use="Drives the one-year state-complaint deadline (distinct from "
+                  "the two-year due-process limitation).",
+        url=_cfr("300.153"),
+    ),
+    LegalProvision(
         id="cfr_300_507_516",
         short_label="34 C.F.R. §§ 300.507–300.516",
         citation="34 C.F.R. §§ 300.507 to 300.516",
@@ -238,18 +250,19 @@ _PROVISIONS: List[LegalProvision] = [
                   "enable progress appropriate in light of the child's "
                   "circumstances.",
         url="https://www.oyez.org/cases/2016/15-827",
-        verify_required=True,
     ),
     LegalProvision(
         id="van_duyn",
         short_label="Van Duyn v. Baker Sch. Dist.",
-        citation="Van Duyn v. Baker Sch. Dist. 5J, 502 F.3d 811 (9th Cir. 2007)",
+        citation="Van Duyn ex rel. Van Duyn v. Baker Sch. Dist. 5J, 502 F.3d "
+                 "811 (9th Cir. 2007)",
         kind=AuthorityKind.CASE,
         governs="Material failure to implement standard",
-        agent_use="Basis for the materiality threshold rule: a shortfall is "
-                  "actionable when the failure to implement is material.",
-        url="",
-        verify_required=True,
+        agent_use="Basis for the materiality rule: a violation requires more "
+                  "than a minor discrepancy, and the proportion of services "
+                  "mandated to those provided is the crucial measure.",
+        url="https://www.courtlistener.com/opinion/1236582/"
+            "van-duyn-ex-rel-van-duyn-v-baker-school-dist-5j/",
     ),
     LegalProvision(
         id="reid_v_dc",
@@ -258,10 +271,10 @@ _PROVISIONS: List[LegalProvision] = [
                  "(D.C. Cir. 2005)",
         kind=AuthorityKind.CASE,
         governs="Compensatory education as a flexible equitable remedy",
-        agent_use="Why comp time is an estimated starting position, not a "
+        agent_use="Why comp time is an estimated starting position assessed "
+                  "qualitatively (to restore the child's position), not a "
                   "mechanical hour-for-hour entitlement.",
-        url="",
-        verify_required=True,
+        url="https://caselaw.findlaw.com/court/us-dc-circuit/1195574.html",
     ),
     # ---- FERPA (data handling) ---------------------------------------------
     LegalProvision(

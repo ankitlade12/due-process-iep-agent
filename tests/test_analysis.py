@@ -40,9 +40,14 @@ def test_worked_example_pipeline():
     for v in a.violations:
         assert_grounded(v)
 
-    # Deadline clock present and in the future.
-    assert a.deadlines[0].days_remaining > 0
-    assert a.deadlines[0].limitations_years == 2
+    # Primary deadline is the 1-year state-complaint window (34 CFR 300.153(c)).
+    assert a.deadlines[0].remedy == "state_complaint"
+    assert a.deadlines[0].limitations_years == 1
+    # The 2-year due-process alternative is also computed and further out.
+    assert a.due_process_deadlines[0].remedy == "due_process"
+    assert a.due_process_deadlines[0].limitations_years == 2
+    assert (a.due_process_deadlines[0].sol_expiry_date
+            > a.deadlines[0].sol_expiry_date)
 
 
 def test_compliant_pipeline_flags_nothing():

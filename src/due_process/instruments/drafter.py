@@ -140,8 +140,8 @@ def draft_state_complaint(
     """
     violation_ids: List[str] = []
     citations: List[str] = [
-        "cfr_300_151_153", "cfr_300_323", "cfr_300_320",
-        "usc_1401_9", "usc_1412_a_1", "van_duyn", "reid_v_dc", "usc_1415_sol",
+        "cfr_300_151_153", "cfr_300_153", "cfr_300_323", "cfr_300_320",
+        "usc_1401_9", "usc_1412_a_1", "van_duyn", "reid_v_dc",
     ]
     total_comp = 0
     facts_sections: List[str] = []
@@ -175,12 +175,13 @@ def draft_state_complaint(
     ])
 
     timeliness = (
-        "This complaint is filed within the two-year limitation period of "
-        "20 U.S.C. § 1415(b)(6)."
+        "Each violation alleged occurred within the one year preceding this "
+        "complaint, as required by 34 C.F.R. § 300.153(c)."
     )
     if earliest_deadline:
-        timeliness += f" The earliest applicable filing deadline is " \
-                      f"{earliest_deadline.isoformat()}."
+        timeliness += (f" The earliest events under review age out of the "
+                       f"one-year window on {earliest_deadline.isoformat()}; "
+                       "a due-process complaint remains available for two years.")
 
     body = "\n\n".join([
         _fmt_date(context.letter_date),

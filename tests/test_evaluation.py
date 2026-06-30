@@ -43,9 +43,18 @@ def _grounded_run():
 
 def test_dataset_is_balanced():
     cases = build_dataset()
-    assert len(cases) == 10
+    assert len(cases) == 11
     n_material = sum(c.label_material for c in cases)
-    assert 3 <= n_material <= 7  # not degenerate
+    assert 3 <= n_material <= 8  # not degenerate
+
+
+def test_dataset_has_documented_cases():
+    # At least some labels come from independent sources (court / guidance),
+    # not just our own materiality rule.
+    cases = build_dataset()
+    documented = [c for c in cases if c.provenance != "synthetic"]
+    assert len(documented) >= 2
+    assert any("Van Duyn" in c.provenance for c in documented)
 
 
 def test_grounded_system_matches_ground_truth():

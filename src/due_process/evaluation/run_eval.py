@@ -68,11 +68,13 @@ def main() -> None:
     comp_mae = mae(comp_true, comp_pred)
 
     n_material = sum(labels)
+    n_documented = sum(1 for c in cases if c.provenance != "synthetic")
     print("=" * 72)
     print("DUE PROCESS — material-failure detection evaluation")
     print("=" * 72)
     print(f"Dataset: {len(cases)} labeled cases "
-          f"({n_material} material, {len(cases) - n_material} not)")
+          f"({n_material} material, {len(cases) - n_material} not; "
+          f"{n_documented} with documented/court-derived labels)")
     print(f"Baseline: {baseline.name}")
     print()
 

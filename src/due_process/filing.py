@@ -30,13 +30,17 @@ class FilingInfo:
     state: str
     agency_name: str
     how_to_file: str
-    limitations_years: int = 2
+    limitations_years: int = 1   # state complaints: 34 C.F.R. 300.153(c)
     notes: str = ""
+    url: str = ""
     verify_required: bool = False
 
 
 # Federal floor for every state, plus a worked example. Add verified states over
 # time — the federal process under 34 C.F.R. 300.151–300.153 applies everywhere.
+_ONE_YEAR_NOTE = ("The complaint must allege a violation that occurred within "
+                  "the past year (34 C.F.R. 300.153(c)).")
+
 _FEDERAL = FilingInfo(
     state="",
     agency_name="your State Education Agency (SEA), Special Education Division",
@@ -47,8 +51,7 @@ _FEDERAL = FilingInfo(
         "complaint form and mailing/upload address on its Department of "
         "Education special-education page. Send a copy to the school district."
     ),
-    limitations_years=2,
-    notes="Federal floor — localize to your state before filing.",
+    notes="Federal floor — localize to your state before filing. " + _ONE_YEAR_NOTE,
 )
 
 STATE_FILING = {
@@ -62,8 +65,39 @@ STATE_FILING = {
             "Division. See the CDE 'Special Education Complaint Procedures' page "
             "for the current intake form and address, and copy your district."
         ),
-        limitations_years=2,
-        notes="Verify the current CDE form and address before filing.",
+        notes="Verify the current CDE form and address. " + _ONE_YEAR_NOTE,
+        url="https://www.cde.ca.gov/sp/se/qa/cmplntproc.asp",
+        verify_required=True,
+    ),
+    "TX": FilingInfo(
+        state="TX",
+        agency_name="Texas Education Agency (TEA), Office of Special "
+                    "Populations and Monitoring",
+        how_to_file=(
+            "File a signed, written complaint describing each alleged violation "
+            "(with dates and facts) and a proposed resolution; send it to TEA "
+            "and a copy to the public education agency. A complaint form "
+            "(English/Spanish) is available but optional. Questions: "
+            "(512) 463-9414."
+        ),
+        notes="Verify the current TEA process. " + _ONE_YEAR_NOTE,
+        url="https://tea.texas.gov/academics/special-student-populations/"
+            "special-education/dispute-resolution/special-education-complaints-process",
+        verify_required=True,
+    ),
+    "NY": FilingInfo(
+        state="NY",
+        agency_name="New York State Education Department (NYSED), Office of "
+                    "Special Education",
+        how_to_file=(
+            "File the ORIGINAL signed, written complaint with: NYSED, Office of "
+            "Special Education, 89 Washington Avenue, Room 309, Albany, NY "
+            "12234, Attention: State Complaints. Faxed or emailed complaints are "
+            "not accepted. State the violation, describe the problem, and "
+            "propose a resolution; copy the school district."
+        ),
+        notes="Verify the current NYSED address/form. " + _ONE_YEAR_NOTE,
+        url="https://www.nysed.gov/special-education/state-complaint",
         verify_required=True,
     ),
 }
@@ -112,8 +146,10 @@ def export_evidence_packet(
     parts.append("\n--- WHERE TO FILE ---")
     parts.append(f"Agency: {info.agency_name}")
     parts.append(info.how_to_file)
-    if info.verify_required:
-        parts.append("(Verify the current form/address on the state's site.)")
+    if info.url:
+        parts.append(f"Reference: {info.url}")
+    if info.notes:
+        parts.append(info.notes)
 
     parts.append("\n--- THE COMPLAINT ---")
     parts.append(instrument.draft_text)

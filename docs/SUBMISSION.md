@@ -34,7 +34,9 @@ Give it the IEP and the service logs. It:
    rule grounded in the Van Duyn standard.
 5. **Estimates** the compensatory time owed (as an equitable starting position per
    Reid v. District of Columbia — not a mechanical formula).
-6. **Tracks** the 2-year statute-of-limitations deadline.
+6. **Tracks** the right deadline for each remedy — a 1-year window for a state
+   complaint (34 C.F.R. 300.153(c)) vs. 2 years for due process — and warns before
+   it runs.
 7. **Drafts** the right instrument — a service-log request or a state complaint —
    with every claim cited to the IEP line, the log entries, and the governing law.
 8. **Waits for a human** to approve before anything is sent.
@@ -101,10 +103,11 @@ rate (telling a parent they have a case when they don't):
 The grounded system never emits an unverifiable citation and never over-flags;
 the baseline (raw Qwen with no ledger and no corpus) does both — it *misses* a
 third of real violations, *over-flags* half the compliant ones, and cites real,
-on-point law only about half the time. (Honest caveat:
-the synthetic labels track our own materiality rule, so this shows consistency and
-the baseline contrast — not that the threshold is the legally correct line. Real
-validation needs advocate-labeled IEPs, which is on the roadmap.)
+on-point law only about half the time. (Honest caveat: most labels are synthetic
+and track our own rule, so the headline is the baseline contrast; a few cases now
+carry independent, court-derived labels — e.g. *Van Duyn*, a 50% tutoring
+shortfall held material — which the system also gets right. Full validation still
+needs a corpus of advocate-labeled IEPs, on the roadmap.)
 
 ## Challenges
 

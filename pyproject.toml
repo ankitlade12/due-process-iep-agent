@@ -18,8 +18,8 @@ dependencies = []
 llm = ["openai>=1.40"]
 # Ingesting real documents (PDF text extraction).
 ingest = ["pypdf>=4.0"]
-# Dev / test.
-dev = ["pytest>=8.0"]
+# Dev / test (pillow generates the sample IEP image for the vision demo).
+dev = ["pytest>=8.0", "pillow>=10.0"]
 
 [project.scripts]
 due-process = "due_process.cli:main"

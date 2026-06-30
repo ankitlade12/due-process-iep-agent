@@ -48,10 +48,18 @@ def test_agenda_surfaces_owed_and_deadline():
     assert a.approaching_deadlines[0][1] > 0  # days remaining
 
 
-def test_deadline_not_flagged_when_far_off():
+def test_state_complaint_deadline_is_caught_as_approaching():
     store, _ = _seed()
-    # Default 90-day window — the deadline is ~679 days out, so nothing urgent.
+    # The 1-year state-complaint window (~64 days out) IS surfaced by the default
+    # 90-day guard — the trap the old 2-year-only logic missed.
     a = agenda(store, "case-1", TODAY)
+    assert a.approaching_deadlines
+    assert 0 < a.approaching_deadlines[0][1] < 90
+
+
+def test_deadline_not_flagged_with_tight_window():
+    store, _ = _seed()
+    a = agenda(store, "case-1", TODAY, within_days=10)
     assert a.approaching_deadlines == []
 
 

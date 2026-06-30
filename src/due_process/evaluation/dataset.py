@@ -32,7 +32,12 @@ _START = date(2025, 9, 2)
 
 @dataclass
 class EvalCase:
-    """One labeled scenario for the eval."""
+    """One labeled scenario for the eval.
+
+    ``provenance`` distinguishes cases whose label comes from an independent
+    source (a court holding or published advocacy guidance) from purely synthetic
+    ones — the documented cases give labels that do NOT just echo our own rule.
+    """
 
     name: str
     commitment: ServiceCommitment
@@ -43,6 +48,7 @@ class EvalCase:
     label_material: bool
     label_comp_minutes: int
     notes: str = ""
+    provenance: str = "synthetic"
 
 
 def _session_date(index: int, freq: int) -> date:
@@ -85,6 +91,7 @@ def _build_case(
     periods: int = 36,
     service: ServiceType = ServiceType.SPEECH_LANGUAGE,
     notes: str = "",
+    provenance: str = "synthetic",
 ) -> EvalCase:
     required = freq * periods
     labels: List[str] = [""] * required
@@ -147,7 +154,7 @@ def _build_case(
         name=name, commitment=commitment, logs=logs,
         window_start=_START, window_end=_session_date(required - 1, freq),
         periods=periods, label_material=label_material,
-        label_comp_minutes=label_comp, notes=notes,
+        label_comp_minutes=label_comp, notes=notes, provenance=provenance,
     )
 
 
@@ -159,7 +166,9 @@ def build_dataset() -> List[EvalCase]:
                     notes="Full delivery — must not false-positive."),
         _build_case("worked_example", label_material=True,
                     delivered=72, excused=12, unexcused=24,
-                    notes="The spec case: 22% unexcused shortfall."),
+                    notes="The spec case: 22% unexcused shortfall.",
+                    provenance="documented: legal-aid guidance (108 required vs "
+                               "72 delivered -> grounds for a state complaint)"),
         _build_case("minor_below_threshold", label_material=False,
                     delivered=100, excused=3, unexcused=5,
                     notes="4.6% unexcused — below the threshold."),
@@ -185,4 +194,11 @@ def build_dataset() -> List[EvalCase]:
                     delivered=40, excused=5, unexcused=27, freq=2,
                     service=ServiceType.OCCUPATIONAL_THERAPY,
                     notes="OT, 2x/week, 37.5% unexcused."),
+        _build_case("van_duyn_tutoring", label_material=True,
+                    delivered=54, excused=0, unexcused=54,
+                    service=ServiceType.SPECIALIZED_INSTRUCTION,
+                    notes="~50% of specialized instruction delivered; in Van "
+                          "Duyn the court held a 50% tutoring shortfall material.",
+                    provenance="documented: Van Duyn v. Baker Sch. Dist. 5J, "
+                               "502 F.3d 811 (9th Cir. 2007)"),
     ]

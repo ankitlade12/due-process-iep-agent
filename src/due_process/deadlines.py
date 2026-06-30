@@ -19,6 +19,16 @@ from .models import DeadlineClock, Violation
 # Federal floor. Two years unless a state overrides.
 DEFAULT_LIMITATIONS_YEARS = 2
 
+# The two remedies have DIFFERENT clocks — a common, costly trap:
+#   * a STATE complaint must allege a violation that occurred not more than ONE
+#     year before the complaint is received (34 C.F.R. 300.153(c)); and
+#   * a DUE-PROCESS complaint has the TWO-year limitation (20 U.S.C. 1415(b)(6),
+#     (f)(3)(C)).
+# The state-complaint clock runs from when the violation occurred; the
+# due-process clock runs from when the parent knew or should have known.
+STATE_COMPLAINT_LOOKBACK_YEARS = 1
+DUE_PROCESS_LIMITATIONS_YEARS = 2
+
 # Per-state limitations period in years. The federal floor is two years; a few
 # states adopt a different window or a distinct discovery rule. Populate this map
 # only with values verified against the state's special-education regulations —
@@ -81,6 +91,49 @@ def compute_deadline(
         days_remaining=days_remaining,
         state=state,
         limitations_years=years,
+    )
+
+
+def state_complaint_deadline(
+    violation_id: str,
+    violation_date: date,
+    today: date,
+    *,
+    state: str = "",
+) -> DeadlineClock:
+    """The deadline to include a violation in a STATE complaint.
+
+    One year from the date the violation occurred (34 C.F.R. 300.153(c)). Pass the
+    earliest violation date to know when the oldest events age out of eligibility.
+    """
+    expiry = add_years(violation_date, STATE_COMPLAINT_LOOKBACK_YEARS)
+    return DeadlineClock(
+        violation_id=violation_id, discovery_date=violation_date,
+        sol_expiry_date=expiry, days_remaining=(expiry - today).days,
+        state=state, limitations_years=STATE_COMPLAINT_LOOKBACK_YEARS,
+        remedy="state_complaint", basis="cfr_300_153",
+    )
+
+
+def due_process_deadline(
+    violation_id: str,
+    discovery_date: date,
+    today: date,
+    *,
+    state: str = "",
+) -> DeadlineClock:
+    """The deadline to file a DUE-PROCESS complaint.
+
+    Two years (federal floor) from when the parent knew or should have known
+    (20 U.S.C. 1415(b)(6), (f)(3)(C)); a state may set a different period.
+    """
+    years = limitations_years_for(state)
+    expiry = add_years(discovery_date, years)
+    return DeadlineClock(
+        violation_id=violation_id, discovery_date=discovery_date,
+        sol_expiry_date=expiry, days_remaining=(expiry - today).days,
+        state=state, limitations_years=years,
+        remedy="due_process", basis="usc_1415_sol",
     )
 
 

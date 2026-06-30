@@ -28,8 +28,8 @@ def test_validate_refs_raises_for_unknown():
 
 def test_core_provisions_present():
     for pid in ["usc_1401_9", "cfr_300_320", "cfr_300_323", "cfr_300_503",
-                "cfr_300_151_153", "usc_1415_sol", "endrew_f", "van_duyn",
-                "reid_v_dc"]:
+                "cfr_300_151_153", "cfr_300_153", "cfr_300_613", "usc_1415_sol",
+                "endrew_f", "van_duyn", "reid_v_dc"]:
         assert corpus.exists(pid)
 
 
@@ -39,11 +39,13 @@ def test_regulations_and_statutes_have_urls():
             assert p.url.startswith("http"), f"{p.id} missing url"
 
 
-def test_cases_flagged_for_verification():
+def test_cases_verified_with_sources():
     cases = corpus.by_kind(AuthorityKind.CASE)
     assert len(cases) == 3
     for c in cases:
-        assert c.verify_required is True
+        # Citations confirmed against primary sources this session.
+        assert c.verify_required is False
+        assert c.url.startswith("http")
 
 
 def test_cfr_and_usc_not_flagged_for_verification():
