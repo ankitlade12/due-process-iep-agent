@@ -69,6 +69,14 @@ an ungrounded baseline with no ledger and no corpus:
 (Offline figures use a transparent heuristic baseline; with a Qwen key the
 baseline is raw Qwen prompted to find violations and cite the law from memory.)
 
+**Honest caveat:** the synthetic labels are constructed to the system's own
+materiality rule, so the grounded 1.00 precision/recall mainly shows the system
+applies its standard *consistently* — not that the standard is legally correct.
+What the eval does fairly establish is the contrast: the grounded system avoids
+the baseline's over-flagging (FPR) and never emits an unverifiable citation. A
+real validation needs de-identified IEPs labeled by a special-education advocate
+(on the roadmap).
+
 ## Quick start
 
 ```bash
