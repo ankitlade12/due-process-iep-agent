@@ -1,18 +1,31 @@
 #!/usr/bin/env bash
 # Bundle the due_process package + the Qwen (openai) SDK + the handler into
 # ./dist, the directory Function Compute uploads (see s.yaml `code: ./dist`).
+#
+# Function Compute runs Linux x86_64 on Python 3.10, so the compiled
+# dependencies (pydantic-core, jiter) must be Linux/cp310 wheels — NOT whatever
+# your build machine happens to be. We fetch cross-platform wheels explicitly so
+# this works even when you build on macOS.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DIST="$HERE/dist"
+PYVER="3.10"
 
 rm -rf "$DIST"
 mkdir -p "$DIST"
 
-# Install the project with the Qwen LLM extra (pulls in openai) into the bundle.
-python3 -m pip install --quiet --upgrade --target "$DIST" "$HERE/..[llm]"
+# 1) Third-party deps (openai + its compiled deps) as Linux/cp310 wheels.
+python3 -m pip install --quiet --target "$DIST" \
+  --platform manylinux2014_x86_64 \
+  --python-version "$PYVER" --implementation cp --abi cp310 \
+  --only-binary=:all: \
+  openai
 
-# Place the Function Compute handler at the bundle root.
+# 2) Our own package is pure Python — install it without pulling deps again.
+python3 -m pip install --quiet --target "$DIST" --no-deps "$HERE/.."
+
+# 3) The Function Compute handler at the bundle root.
 cp "$HERE/handler.py" "$DIST/handler.py"
 
-echo "Built deployment bundle at $DIST"
+echo "Built Linux/py${PYVER} deployment bundle at $DIST"
