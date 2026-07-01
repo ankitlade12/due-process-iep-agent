@@ -16,11 +16,15 @@ rm -rf "$DIST"
 mkdir -p "$DIST"
 
 # 1) Third-party deps (openai + its compiled deps) as Linux/cp310 wheels.
+# NOTE: we install from a newer local Python, so pip evaluates environment
+# markers (e.g. `python_version < "3.11"`) against the build machine, not the
+# 3.10 target — which silently drops backports like exceptiongroup (needed by
+# anyio on 3.10). List those explicitly so the bundle actually imports on FC.
 python3 -m pip install --quiet --target "$DIST" \
   --platform manylinux2014_x86_64 \
   --python-version "$PYVER" --implementation cp --abi cp310 \
   --only-binary=:all: \
-  openai
+  openai exceptiongroup
 
 # 2) Our own package is pure Python — install it without pulling deps again.
 python3 -m pip install --quiet --target "$DIST" --no-deps "$HERE/.."

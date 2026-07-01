@@ -26,14 +26,16 @@ resources:
       description: IEP enforcement agent — invokes Qwen Cloud Model Studio
       runtime: python3.10
       handler: handler.handler
-      timeout: 120
+      timeout: 300
       cpu: 0.5
       memorySize: 1024
       diskSize: 512
       code: ./dist
       environmentVariables:
         DASHSCOPE_API_KEY: ${env.DASHSCOPE_API_KEY}
-        DUE_PROCESS_ORCHESTRATOR_MODEL: qwen3.7-max
+        # qwen3.7-plus everywhere in the deployed function: fast and reliable
+        # within the request timeout (qwen3.7-max reasoning latency can exceed it).
+        DUE_PROCESS_ORCHESTRATOR_MODEL: qwen3.7-plus
         DUE_PROCESS_WORKHORSE_MODEL: qwen3.7-plus
       triggers:
         - triggerName: httpTrigger
