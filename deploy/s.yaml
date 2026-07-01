@@ -27,6 +27,7 @@ resources:
       runtime: python3.10
       handler: handler.handler
       timeout: 120
+      cpu: 0.5
       memorySize: 1024
       diskSize: 512
       code: ./dist
