@@ -79,8 +79,10 @@ A hard boundary: **no LLM ever does the math or the law lookup.**
 The bounded LLM layer runs on Qwen Cloud's OpenAI-compatible Model Studio endpoint:
 
 - **`qwen3.7-max`** — the agent's reasoning and the complaint narrative
-- **`qwen3.7-plus`** — the cheap workhorse for extraction and reason classification
-  (JSON-structured output), and multimodal reading of scanned IEP PDFs
+- **`qwen3.6-flash`** — default workhorse for extraction and reason classification
+  (JSON-structured output)
+- **`qwen3.7-plus`** — multimodal reading of scanned IEP PDFs; the deployed
+  Function Compute demo can also use it as the lower-latency workhorse
 - Reason-deduplication and the deterministic fallbacks keep token use minimal
 
 The agent is deployed to **Alibaba Cloud Function Compute**; the deployed function
@@ -122,9 +124,12 @@ needs a corpus of advocate-labeled IEPs, on the roadmap.)
 
 - A working end-to-end Track 4 agent with a human checkpoint at every critical
   decision and a full audit trail.
-- 84 passing tests; the deterministic core reproduces a real worked example exactly
+- 134 passing tests; the deterministic core reproduces a real worked example exactly
   (108 required vs 72 delivered → a 720-minute, 22% shortfall).
 - A published eval — the thing no incumbent reports.
+- A live Streamlit advocate case desk generated from the real backend workflow, showing
+  the agent run, bounded Qwen tasks, deterministic ledger, evidence chain,
+  approval queue, complaint draft, and district-wide systemic pattern.
 
 ## What's next
 
@@ -136,8 +141,9 @@ needs a corpus of advocate-labeled IEPs, on the roadmap.)
 
 ## Built with
 
-Python · Qwen Cloud (Model Studio: qwen3.7-max, qwen3.7-plus) · Alibaba Cloud
-Function Compute · OpenAI-compatible SDK · Apache-2.0, fully open source.
+Python · Qwen Cloud (Model Studio: qwen3.7-max, qwen3.6-flash, qwen3.7-plus) ·
+Alibaba Cloud Function Compute · OpenAI-compatible SDK · Apache-2.0, fully open
+source.
 
 ---
 
@@ -154,16 +160,16 @@ which is open." One sentence: every other AI tool preps you for the meeting; thi
 one checks whether the school delivered after it.
 
 **0:45–1:45 — Live demo (the core).**
-Run `python -m due_process.examples.agent_demo`. Narrate the audit trail as it
-prints: Qwen extracts the service from the IEP → classifies each missed reason →
-the **deterministic** ledger computes 720 minutes (22%) unexcused → it's a material
-failure → 12 hours of comp owed → deadline 679 days out. Then scroll the drafted
-state complaint: point at the citations and the 24 linked log entries. Say: "Every
-number came from code, not the model. Every citation is validated." Then run
-`python -m due_process.examples.systemic_demo`: "Now multiply it — 12 families
-collapse into one district-wide complaint, no child named. That's the move that
-fixes it for everyone, not one kid at a time." Show the Spanish parent receipt:
-"and it speaks the family's language."
+Run `streamlit run src/due_process/examples/case_desk.py`. Show that the advocate
+desk starts as a case file, then click **Run live Qwen review** so Qwen Cloud runs
+the language-heavy extraction/classification while the UI streams progress. When
+the result lands, show the **deterministic** ledger computing 720 minutes (22%)
+unexcused, the approval queue holding the complaint before send, and claim cards
+keeping the IEP line, service-log entries, legal authorities, and draft remedy
+attached. Mention **Fast local preview** only as the rehearsal path when cloud
+latency is not useful. Then show the district panel:
+"Now multiply it — 12 families collapse into one de-identified district complaint.
+That's the move that fixes it for everyone, not one kid at a time."
 
 **1:45–2:15 — The boundary + grounding.**
 Show the README table: deterministic core vs. bounded Qwen. Emphasize: the LLM

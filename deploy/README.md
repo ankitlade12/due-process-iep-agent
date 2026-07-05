@@ -60,7 +60,7 @@ demo video.
 ```json
 {
   "llm": "qwen-online",
-  "models": {"orchestrator": "qwen3.7-max", "workhorse": "qwen3.7-plus"},
+  "models": {"orchestrator": "qwen3.7-plus", "workhorse": "qwen3.7-plus"},
   "analyses": [{"material_failure": true, "unexcused_shortfall_minutes": 720,
                 "compensatory_minutes": 720, "deadline": "2028-05-09"}],
   "instruments": [{"type": "state_complaint", "status": "draft", "...": "..."}],

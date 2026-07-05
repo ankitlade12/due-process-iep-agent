@@ -88,8 +88,8 @@ def main() -> None:
 
     print()
     print(RULE)
-    print("RESULT:", "Qwen Cloud integration is LIVE ✔" if ok
-          else "Some calls did not use Qwen — see errors above.")
+    print("RESULT:", "Qwen Cloud integration is LIVE" if ok
+          else "Some calls did not use Qwen - see errors above.")
     print(RULE)
 
 

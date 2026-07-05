@@ -47,7 +47,7 @@ def main() -> None:
               f"comp {a.compensatory.estimated_minutes:>4} min   {flag}")
 
     findings = aggregate_systemic(cases)
-    print(f"\nSYSTEMIC FINDINGS (k-anonymity ≥ {findings[0].k_threshold if findings else 5})")
+    print(f"\nSYSTEMIC FINDINGS (k-anonymity >= {findings[0].k_threshold if findings else 5})")
     print("-" * 72)
     if not findings:
         print("  No pattern met the privacy + materiality thresholds.")

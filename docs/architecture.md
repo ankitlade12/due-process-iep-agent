@@ -1,91 +1,111 @@
 # Architecture
 
-**Due Process** — an IEP enforcement agent (Qwen Cloud hackathon, Track 4:
-Autopilot Agent).
+**Due Process** is a Track 4 Autopilot Agent for IEP service-delivery
+enforcement. The core design choice is a hard boundary between:
 
-## The one idea
+- **Qwen Cloud**, which handles messy language tasks.
+- **Deterministic Python**, which handles math, materiality, deadlines,
+  grounding, and approval state.
+- **A human approval gate**, which blocks every outbound action.
 
-A hard boundary between a **deterministic core** that does all the math and the
-law lookup, and a **bounded Qwen LLM** that only handles messy language and fills
-fixed scaffolds. A human approves every outbound action. Every claim is grounded
-to a verifiable source, so a hallucinated citation is impossible by construction.
-
-## System flow
+## Demo System
 
 ```mermaid
 flowchart TD
-    IEP["IEP PDF / text"]
-    LOGS["Service logs (school or parent)"]
+    USER["Parent / advocate / judge"] --> DESK["Streamlit case desk"]
+    DESK --> RUN["Run live Qwen review"]
+    DESK --> PREVIEW["Fast local preview"]
 
-    subgraph QWEN["Bounded LLM — Qwen Cloud (OpenAI-compatible)"]
-      EX["extract commitments<br/>(qwen3.6-flash)"]
-      CL["classify reasons<br/>excused / unexcused / ambiguous"]
-      NA["narrative<br/>(qwen3.7-max)"]
-    end
+    RUN --> QWEN["Qwen Cloud Model Studio"]
+    PREVIEW --> RULES["Local rule-based fallback"]
 
-    subgraph DET["Deterministic core — NO LLM (unit-tested)"]
-      LED["ledger<br/>required vs delivered minutes"]
-      MAT["materiality rule<br/>(Van Duyn standard)"]
-      DL["statute-of-limitations clock"]
-      COMP["compensatory estimate<br/>(Reid — equitable)"]
-    end
+    QWEN --> EXTRACT["Extract IEP commitments"]
+    QWEN --> CLASSIFY["Classify missed-session reasons"]
+    QWEN --> NARRATIVE["Draft narrative language"]
 
-    subgraph GR["Grounding"]
-      COR["legal corpus<br/>IDEA CFR / U.S.C. / case law"]
-      EV["evidence by ID<br/>rejects ungrounded claims"]
-    end
+    RULES --> EXTRACT
+    RULES --> CLASSIFY
 
-    subgraph OUT["Instruments + human-in-the-loop"]
-      DR["fixed cited templates<br/>service-log request · state complaint · PWN"]
-      AP["human approval gate<br/>DRAFT → APPROVED → SENT"]
-    end
+    EXTRACT --> LEDGER["Deterministic ledger"]
+    CLASSIFY --> LEDGER
+    LEDGER --> MATERIALITY["Materiality and comp estimate"]
+    MATERIALITY --> GROUNDING["Evidence and legal grounding"]
+    GROUNDING --> DRAFT["Draft complaint / remedy"]
+    NARRATIVE --> DRAFT
+    DRAFT --> APPROVAL["Human approval checklist"]
+    APPROVAL --> HOLD["Draft held; no send in demo"]
 
-    IEP --> EX --> C1{"checkpoint:<br/>confirm parsed values"} --> LED
-    LOGS --> CL --> C2{"checkpoint:<br/>resolve ambiguous"} --> LED
-    LED --> MAT
-    MAT --> COMP
-    MAT --> DL
-    MAT --> EV
-    COR --> EV
-    EV --> DR
-    COMP --> DR
-    DL --> DR
-    NA --> DR
-    DR --> AP --> SEND["send + timestamped audit entry"]
+    LEDGER --> SYSTEMIC["District-wide k-anonymous pattern"]
+    SYSTEMIC --> SYS_DRAFT["Systemic complaint draft"]
 ```
 
-## The deterministic / LLM split
+The demo UI is not a static mock. It calls the same backend modules used by the
+CLI and tests: extraction, classification, ledger, materiality, grounding,
+instrument drafting, systemic aggregation, and approval policy.
 
-| Deterministic code (auditable) | Qwen LLM (bounded) |
-|---|---|
-| Minutes arithmetic, the ledger | Classify a free-text missed reason |
-| Materiality threshold | Extract commitments from a messy IEP |
-| Statute-of-limitations math | Plain-language summary |
-| PWN 7-element checklist | Letter narrative into a fixed template |
+## Agent Boundary
 
-The LLM never decides materiality, never computes minutes, and never authors the
-legal scaffolding or the citations. Ambiguous classifications are flagged for a
-human, never auto-resolved.
+| Layer | Responsibility | Why it matters |
+|---|---|---|
+| Qwen Cloud | IEP commitment extraction, missed-reason classification, narrative language | Handles ambiguous real-world records without giving it legal authority |
+| Deterministic core | Required vs delivered minutes, materiality threshold, deadline math, compensatory estimate | Keeps the auditable decisions reproducible and testable |
+| Grounding layer | Links every claim to IEP text, log rows, and legal references | Prevents unsupported allegations and hallucinated citations |
+| Human approval | Confirm parsed values, resolve ambiguous reasons, approve drafts | Keeps the agent from taking legal or outbound action alone |
 
-## Deployment view (Qwen Cloud + Alibaba Cloud)
+The LLM never computes the ledger, decides materiality, selects a legal deadline,
+or invents citations. Ambiguous classifications become checkpoints.
+
+## Backend Flow
 
 ```mermaid
 flowchart LR
-    U["Parent / advocate"] --> API["API Gateway"]
-    API --> FC["Function Compute<br/>ingest · ledger · draft"]
-    FC --> MS["Qwen Cloud Model Studio<br/>qwen3.7-max / 3.6-flash / 3.7-plus"]
-    FC --> OSS["OSS<br/>IEPs, logs, drafts (encrypted)"]
-    FC --> RDS["ApsaraDB RDS PostgreSQL<br/>ledger · violations · deadline clock"]
-    FC --> REDIS["ApsaraDB Redis<br/>prompt cache"]
+    IEP["IEP text / scanned IEP"] --> REDACT["FERPA redaction"]
+    LOGS["Service logs"] --> INGEST["Log ingestion"]
+    REDACT --> QEX["Qwen or rules: commitment extraction"]
+    INGEST --> QCL["Qwen or rules: reason classification"]
+    QEX --> ANALYSIS["Analysis pipeline"]
+    QCL --> ANALYSIS
+    ANALYSIS --> LED["Ledger"]
+    LED --> MAT["Materiality"]
+    MAT --> DEADLINE["Deadline clock"]
+    MAT --> COMP["Compensatory estimate"]
+    DEADLINE --> CLAIMS["Grounded claims"]
+    COMP --> CLAIMS
+    CLAIMS --> INSTRUMENT["Fixed cited instrument template"]
+    INSTRUMENT --> GATE["Approval gate"]
+    GATE --> AUDIT["Audit trail"]
 ```
 
-The deterministic core and the bounded LLM layer are deployment-agnostic Python
-today; the proof-of-deployment wraps the agent in a Function Compute handler that
-invokes Qwen Cloud Model Studio (the Alibaba Cloud API the hackathon requires).
+## Alibaba Cloud Deployment View
 
-## Privacy (FERPA)
+```mermaid
+flowchart LR
+    CLIENT["Demo / API caller"] --> FC["Alibaba Cloud Function Compute"]
+    FC --> MODEL["Qwen Cloud Model Studio<br/>OpenAI-compatible API"]
+    FC --> CORE["Deterministic Python package"]
+    CORE --> CORPUS["Legal corpus and evidence IDs"]
+    CORE --> RESPONSE["JSON: ledger, claims, drafts, audit"]
+```
 
-IEPs and service logs are student education records (FERPA, 20 U.S.C. 1232g; 34
-C.F.R. Part 99). PII is redacted before any cloud model call, or the open-weight
-Qwen model runs in a private VPC so identifiable records never leave the parent's
-control. Encrypted at rest and in transit; no training on uploads.
+The deployed proof path lives in `deploy/`. `handler.py` invokes the package and
+uses the Qwen Cloud base URL from `due_process.llm.client`. The response reports
+`"llm": "qwen-online"` when Model Studio was called successfully.
+
+## Safety and Privacy
+
+- FERPA-sensitive fields are redacted before cloud model calls.
+- Draft instruments are held for human review.
+- The demo does not send anything externally.
+- Systemic aggregation uses k-anonymity before producing district-level findings.
+- The local preview path exists for rehearsal and offline tests, but the primary
+  demo path is the live Qwen Cloud review.
+
+## Verification Surface
+
+- `uv run pytest` covers the deterministic core and the case desk payload.
+- `python -m due_process.examples.qwen_smoketest` verifies live Qwen extraction,
+  classification, and narrative calls.
+- `streamlit run src/due_process/examples/case_desk.py` runs the judge-facing
+  demo workspace.
+- `deploy/handler.py` is the Alibaba Function Compute entrypoint for deployment
+  proof.

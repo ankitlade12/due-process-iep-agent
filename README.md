@@ -106,8 +106,8 @@ the roadmap).
 ## Quick start
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,llm]"
+uv venv
+uv pip install -e ".[dev,llm,ingest,demo]"
 
 # 1) Deterministic core — reproduce the spec's worked example (108 vs 72 sessions):
 python -m due_process.examples.worked_example
@@ -124,8 +124,13 @@ python -m due_process.examples.vision_demo
 # 5) The evaluation — grounded system vs an ungrounded raw-Qwen baseline:
 python -m due_process.evaluation.run_eval
 
-# Test suite (132 tests, all offline):
-pytest
+# 6) Live advocate case desk generated from the real backend workflow.
+# In the app, use "Run live Qwen review" for the Qwen Cloud demo path.
+# Use "Fast local preview" only for rehearsal when you do not want cloud latency.
+streamlit run src/due_process/examples/case_desk.py
+
+# Test suite (134 tests, all offline):
+uv run --extra dev pytest
 ```
 
 Or use the installed CLI on real files:
@@ -136,6 +141,15 @@ due-process analyze --logs service_log.csv --service speech --freq 3 \
 due-process pwn --file prior_written_notice.txt        # check the 7 elements
 due-process vision --image scanned_iep.png             # Qwen reads the page
 ```
+
+## Demo and submission docs
+
+- [`docs/architecture.md`](docs/architecture.md) - Qwen Cloud, deterministic core,
+  grounding, human approval, and Alibaba Function Compute deployment view.
+- [`docs/TWO_PERSON_DEMO_SCRIPT.md`](docs/TWO_PERSON_DEMO_SCRIPT.md) - 2:10-2:30
+  recording script for two presenters.
+- [`docs/SUBMISSION.md`](docs/SUBMISSION.md) - Devpost-facing project description
+  and longer 3-minute script.
 
 Everything above runs **with no API key**, using transparent rule-based / template
 fallbacks. To use Qwen for messy real-world inputs, add a key:
@@ -150,8 +164,9 @@ The LLM layer targets Qwen Cloud's OpenAI-compatible endpoint
 (`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`). Model roles:
 
 - **`qwen3.7-max`** — orchestration, reasoning, and the letter narrative
-- **`qwen3.6-flash`** — the cheap workhorse for high-volume extraction/classification
-- **`qwen3.7-plus`** — multimodal, for scanned IEP PDFs and photographed logs
+- **`qwen3.6-flash`** — default workhorse for high-volume extraction/classification
+- **`qwen3.7-plus`** — multimodal scanned-IEP reading; the Function Compute demo
+  also uses it as the low-latency deployed workhorse
 
 The code is provider-pluggable: every Qwen-backed task has a deterministic
 fallback, so the system degrades gracefully to offline rules and upgrades to Qwen

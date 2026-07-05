@@ -20,6 +20,8 @@ llm = ["openai>=1.40"]
 ingest = ["pypdf>=4.0"]
 # Dev / test (pillow generates the sample IEP image for the vision demo).
 dev = ["pytest>=8.0", "pillow>=10.0"]
+# Demo UI.
+demo = ["streamlit>=1.36"]
 
 [project.scripts]
 due-process = "due_process.cli:main"
