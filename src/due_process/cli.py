@@ -197,7 +197,10 @@ def cmd_vision(args) -> int:
         return 2
     redactor = (Redactor.for_case(student_name=args.student_name)
                 if args.student_name else None)
-    text = read_iep_image(args.image, client, redactor=redactor)
+    text = read_iep_image(
+        args.image, client, redactor=redactor,
+        image_is_redacted_or_synthetic=args.redacted_or_synthetic,
+    )
     print("--- TRANSCRIPTION ---")
     print(text)
     print("\n--- PARSED SERVICES ---")
@@ -241,6 +244,10 @@ def build_parser() -> argparse.ArgumentParser:
     v = sub.add_parser("vision", help="read a scanned IEP image via Qwen vision")
     v.add_argument("--image", required=True, help="PNG/JPG of an IEP page")
     v.add_argument("--student-name", default="", help="redact PII in the output")
+    v.add_argument(
+        "--redacted-or-synthetic", action="store_true", required=True,
+        help="confirm the image contains no real unredacted student PII",
+    )
     v.set_defaults(func=cmd_vision)
     return p
 

@@ -1,4 +1,4 @@
-"""Tests for FERPA PII redaction."""
+"""Tests for direct-identifier redaction."""
 
 from due_process.privacy import Redactor, redact_for_cloud
 

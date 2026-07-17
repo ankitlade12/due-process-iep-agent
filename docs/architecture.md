@@ -1,111 +1,78 @@
 # Architecture
 
-**Due Process** is a Track 4 Autopilot Agent for IEP service-delivery
-enforcement. The core design choice is a hard boundary between:
-
-- **Qwen Cloud**, which handles messy language tasks.
-- **Deterministic Python**, which handles math, materiality, deadlines,
-  grounding, and approval state.
-- **A human approval gate**, which blocks every outbound action.
-
-## Demo System
+Due Process is a Track 4 Autopilot Agent with one strict boundary: Qwen interprets
+ambiguous language; deterministic code owns consequential calculations,
+publication checks, and external-action state.
 
 ```mermaid
-flowchart TD
-    USER["Parent / advocate / judge"] --> DESK["Streamlit case desk"]
-    DESK --> RUN["Run live Qwen review"]
-    DESK --> PREVIEW["Fast local preview"]
-
-    RUN --> QWEN["Qwen Cloud Model Studio"]
-    PREVIEW --> RULES["Local rule-based fallback"]
-
-    QWEN --> EXTRACT["Extract IEP commitments"]
-    QWEN --> CLASSIFY["Classify missed-session reasons"]
-    QWEN --> NARRATIVE["Draft narrative language"]
-
-    RULES --> EXTRACT
-    RULES --> CLASSIFY
-
-    EXTRACT --> LEDGER["Deterministic ledger"]
-    CLASSIFY --> LEDGER
-    LEDGER --> MATERIALITY["Materiality and comp estimate"]
-    MATERIALITY --> GROUNDING["Evidence and legal grounding"]
-    GROUNDING --> DRAFT["Draft complaint / remedy"]
-    NARRATIVE --> DRAFT
-    DRAFT --> APPROVAL["Human approval checklist"]
-    APPROVAL --> HOLD["Draft held; no send in demo"]
-
-    LEDGER --> SYSTEMIC["District-wide k-anonymous pattern"]
-    SYSTEMIC --> SYS_DRAFT["Systemic complaint draft"]
+flowchart LR
+    U["Parent / advocate"] --> UI["Streamlit case desk"]
+    UI --> R["Direct-identifier redaction"]
+    R --> Q["Qwen Cloud: extract / classify / draft"]
+    Q --> P["Actual-call provenance + fallback reasons"]
+    R --> F["Rule fallback"]
+    Q --> D["Deterministic ledger / review policy / deadlines"]
+    F --> D
+    D --> G["Evidence-ID and corpus publication gate"]
+    G --> H["Human review checkpoint"]
+    H -->|"explicit approval"| FC["Alibaba Function Compute"]
+    FC --> OSS["Alibaba OSS content-addressed packet"]
+    OSS --> RCPT["URI + SHA-256 receipt + audit event"]
 ```
 
-The demo UI is not a static mock. It calls the same backend modules used by the
-CLI and tests: extraction, classification, ledger, materiality, grounding,
-instrument drafting, systemic aggregation, and approval policy.
+## Responsibility map
 
-## Agent Boundary
-
-| Layer | Responsibility | Why it matters |
+| Layer | Owns | Cannot claim |
 |---|---|---|
-| Qwen Cloud | IEP commitment extraction, missed-reason classification, narrative language | Handles ambiguous real-world records without giving it legal authority |
-| Deterministic core | Required vs delivered minutes, materiality threshold, deadline math, compensatory estimate | Keeps the auditable decisions reproducible and testable |
-| Grounding layer | Links every claim to IEP text, log rows, and legal references | Prevents unsupported allegations and hallucinated citations |
-| Human approval | Confirm parsed values, resolve ambiguous reasons, approve drafts | Keeps the agent from taking legal or outbound action alone |
+| Qwen Cloud | service extraction, narrative-reason classification, bounded prose | legal conclusion, ledger math, successful use when it fell back |
+| Deterministic core | minutes, windows, review threshold, deadline indicators | that a configurable threshold is the law |
+| Grounding gate | source IDs and controlled corpus resolution | that the corpus is complete or an authority controls a case |
+| Human gate | confirms interpretation and approves external action | automated legal representation |
+| OSS adapter | approved packet storage and immutable content hash | permission without an explicit approval flag |
 
-The LLM never computes the ledger, decides materiality, selects a legal deadline,
-or invents citations. Ambiguous classifications become checkpoints.
-
-## Backend Flow
+## Deployment boundary
 
 ```mermaid
-flowchart LR
-    IEP["IEP text / scanned IEP"] --> REDACT["FERPA redaction"]
-    LOGS["Service logs"] --> INGEST["Log ingestion"]
-    REDACT --> QEX["Qwen or rules: commitment extraction"]
-    INGEST --> QCL["Qwen or rules: reason classification"]
-    QEX --> ANALYSIS["Analysis pipeline"]
-    QCL --> ANALYSIS
-    ANALYSIS --> LED["Ledger"]
-    LED --> MAT["Materiality"]
-    MAT --> DEADLINE["Deadline clock"]
-    MAT --> COMP["Compensatory estimate"]
-    DEADLINE --> CLAIMS["Grounded claims"]
-    COMP --> CLAIMS
-    CLAIMS --> INSTRUMENT["Fixed cited instrument template"]
-    INSTRUMENT --> GATE["Approval gate"]
-    GATE --> AUDIT["Audit trail"]
+sequenceDiagram
+    participant C as API caller
+    participant F as Function Compute
+    participant Q as Qwen Cloud
+    participant O as Alibaba OSS
+    C->>F: empty public request
+    F->>Q: synthetic example language tasks
+    Q-->>F: result or explicit fallback
+    F-->>C: draft + actual provenance
+    C->>F: custom case + Bearer token
+    F->>F: validate size, rows, dates, ranges
+    F->>Q: redacted text tasks
+    C->>F: explicit storage approval
+    F->>O: content-addressed evidence packet
+    O-->>F: storage result
+    F-->>C: oss:// URI + SHA-256 + audit entry
 ```
 
-## Alibaba Cloud Deployment View
+Custom-case requests are disabled until `DUE_PROCESS_API_TOKEN` is configured.
+Inputs are bounded to 1 MB, 100,000 IEP characters, 2,000 log rows, a two-year
+window, and validated per-row fields. The public no-payload route runs synthetic
+data only.
 
-```mermaid
-flowchart LR
-    CLIENT["Demo / API caller"] --> FC["Alibaba Cloud Function Compute"]
-    FC --> MODEL["Qwen Cloud Model Studio<br/>OpenAI-compatible API"]
-    FC --> CORE["Deterministic Python package"]
-    CORE --> CORPUS["Legal corpus and evidence IDs"]
-    CORE --> RESPONSE["JSON: ledger, claims, drafts, audit"]
-```
+## Privacy model
 
-The deployed proof path lives in `deploy/`. `handler.py` invokes the package and
-uses the Qwen Cloud base URL from `due_process.llm.client`. The response reports
-`"llm": "qwen-online"` when Model Studio was called successfully.
+- Public UI instructions permit only synthetic or already-de-identified inputs.
+- Known direct identifiers are removed before text model calls, but automated
+  redaction is not a FERPA compliance certification.
+- Images are riskier because the cloud receives pixels before returning text;
+  vision therefore refuses an image without a redacted/synthetic attestation.
+- Cross-case pattern analysis requires the caller to have authority for each case,
+  uses pseudonyms, and applies a k-anonymity reporting threshold.
+- Production should use a separate least-privilege OSS identity or RAM role,
+  retention controls, access logs, encryption, and documented incident response.
 
-## Safety and Privacy
+## Verification
 
-- FERPA-sensitive fields are redacted before cloud model calls.
-- Draft instruments are held for human review.
-- The demo does not send anything externally.
-- Systemic aggregation uses k-anonymity before producing district-level findings.
-- The local preview path exists for rehearsal and offline tests, but the primary
-  demo path is the live Qwen Cloud review.
-
-## Verification Surface
-
-- `uv run pytest` covers the deterministic core and the case desk payload.
-- `python -m due_process.examples.qwen_smoketest` verifies live Qwen extraction,
-  classification, and narrative calls.
-- `streamlit run src/due_process/examples/case_desk.py` runs the judge-facing
-  demo workspace.
-- `deploy/handler.py` is the Alibaba Function Compute entrypoint for deployment
-  proof.
+- `uv run --extra dev pytest` — offline unit and boundary tests.
+- `python -m due_process.evaluation.run_eval --offline` — stable benchmark.
+- `python -m due_process.evaluation.run_eval --online` — explicit live-Qwen
+  comparison; results are variable.
+- `streamlit run src/due_process/examples/case_desk.py` — judge-facing workflow.
+- `deploy/handler.py` — authenticated Function Compute boundary and OSS action.

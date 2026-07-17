@@ -1,186 +1,135 @@
 # Devpost submission — Due Process
 
-**Track:** Autopilot Agent · **Built on:** Qwen Cloud (Model Studio)
+**Track:** 4, Autopilot Agent
 
----
+**Built with:** Qwen Cloud Model Studio and Alibaba Cloud Function Compute
 
 ## Elevator pitch
 
-The incumbents prepare you for the IEP meeting. **Due Process holds the school
-accountable *after* it** — a grounded agent that tracks whether a school delivered
-the special-education services it legally promised, proves the gap, computes what
-the child is owed, and drafts the cited remedy, with a human approving every step.
+Due Process turns an IEP service schedule and messy delivery logs into an
+auditable review: what was promised, what the records show, which source rows
+support each concern, and a human-review evidence packet. Qwen handles ambiguous
+language; deterministic code handles minutes, thresholds, deadlines, grounding,
+and approval state.
 
-## Inspiration
+## The problem
 
-Over 8 million US students have a legal right under IDEA to specific services
-written into an IEP — a binding contract. Schools routinely under-deliver, and the
-entire enforcement burden falls on parents, who mostly can't afford the $150–250/hr
-advocates. A wave of AI tools launched in 2026 to help parents *prep for the
-meeting* — but none of them do the job that comes *after*: checking, all year,
-whether the school actually delivered, and proving it when it didn't. That job is
-unoccupied, and it's exactly what software should automate.
+IEP delivery evidence is scattered across plans, provider logs, emails, and
+calendars. Families and under-resourced advocates must manually reconstruct the
+record while deadlines continue to run. Existing tools increasingly support IEP
+review, service tracking, and letter drafting. Our wedge is not an unsupported
+“only product” claim: it is an open, provenance-first workflow whose calculations
+and publication gates can be inspected and reproduced.
 
 ## What it does
 
-Give it the IEP and the service logs. It:
+1. Extracts frequency, duration, setting, and service type from redacted IEP text.
+2. Classifies free-text missed-session reasons; ambiguous cases stop for a human.
+3. Computes required, delivered, excused, and unexcused minutes deterministically.
+4. Applies a configurable **review policy**, not a legal bright-line test.
+5. Estimates compensatory minutes as a discussion starting point, not an award.
+6. Computes federal-floor deadline indicators and warns that state rules vary.
+7. Publishes only claims tied to IEP text, log IDs, and controlled corpus IDs.
+8. Creates a draft packet and waits for human approval before external storage.
+9. With authorized multi-case data, privacy-gates de-identified pattern review.
 
-1. **Extracts** the promised services (frequency × duration × setting).
-2. **Classifies** each missed session's reason as excused (child absence) vs.
-   unexcused (the school failed to staff it) — flagging anything ambiguous for a
-   human.
-3. **Computes** the promised-vs-delivered minutes ledger deterministically.
-4. **Detects** a *material failure to implement* using a transparent, configurable
-   rule grounded in the Van Duyn standard.
-5. **Estimates** the compensatory time owed (as an equitable starting position per
-   Reid v. District of Columbia — not a mechanical formula).
-6. **Tracks** the right deadline for each remedy — a 1-year window for a state
-   complaint (34 C.F.R. 300.153(c)) vs. 2 years for due process — and warns before
-   it runs.
-7. **Drafts** the right instrument — a service-log request or a state complaint —
-   with every claim cited to the IEP line, the log entries, and the governing law.
-8. **Waits for a human** to approve before anything is sent.
+## Why it is a strong Track 4 agent
 
-## Why it's novel — and who it actually helps
+- **End-to-end workflow:** ingest → interpret → calculate → ground → draft →
+  approve → optional OSS artifact.
+- **Ambiguous inputs:** Qwen extracts service commitments and interprets narrative
+  absence reasons, with local fallbacks and explicit fallback provenance.
+- **Real external tool:** an authenticated Function Compute request can store a
+  content-addressed evidence packet in Alibaba OSS only after
+  `approval.store_evidence_packet=true`.
+- **Human checkpoints:** parsed commitments, ambiguity, and external action are
+  separate gates.
+- **Production signals:** request bounds, authentication for real cases, generated
+  request IDs, hashes and receipts, audit entries, offline tests, and CI.
 
-This isn't another paid consumer app. It's open infrastructure for the people who
-already help families for free:
+## Technical boundary
 
-- **Enforcement, not prep** — the only tool that checks, all year, whether the
-  school *delivered*, not just one that preps you for the meeting.
-- **Systemic evidence** — it aggregates shortfalls across many families (with
-  k-anonymity) into a *systemic* state complaint (34 C.F.R. 300.151(b)), forcing
-  district-wide relief that fixes services for **every** affected child. In the
-  demo, 12 students → one de-identified finding (58% with a material failure,
-  6,930 minutes owed) → a district complaint, with no child identified.
-- **A force-multiplier for the under-resourced** — Parent Training & Information
-  centers and pro-bono advocates are swamped and have no tooling; this is the open
-  backbone that 10×'s them, handling a whole caseload at once.
-- **Built for access** — "receipts, not lawsuits," and the parent-facing summary
-  translates via Qwen, because the enforcement system silently assumes an
-  English-fluent, sophisticated parent and most families aren't.
+| Qwen Cloud | Deterministic application code |
+|---|---|
+| Extract commitments from messy text | Ledger arithmetic |
+| Classify narrative reasons | Configurable review threshold |
+| Fill narrative scaffolds | Deadline calculation |
+| Read attested redacted/synthetic images | Citation and evidence-ID validation |
 
-## How we built it — the one idea that makes it credible
+The Function Compute response reports successful and failed Qwen calls, task
+methods, request IDs when available, latency, and fallback reasons. Having a key
+configured is never presented as proof that Qwen completed the task.
 
-A hard boundary: **no LLM ever does the math or the law lookup.**
+## Reproducible evaluation
 
-- **Deterministic core** (unit-tested): the minutes ledger, the materiality rule,
-  the statute-of-limitations clock, the Prior Written Notice checklist.
-- **Bounded Qwen LLM**: only the messy-language tasks — extract commitments,
-  classify reasons, write the letter narrative — each filling a fixed scaffold.
-- **Grounding**: every violation links to three verifiable sources, and every
-  citation is validated against a legal corpus, so a hallucinated cite is
-  impossible *by construction*.
-- **Human-in-the-loop**: confirm parsed values, resolve ambiguous calls, approve
-  every send.
+`python -m due_process.evaluation.run_eval --offline`
 
-## Qwen Cloud usage
+| metric | grounded | offline heuristic baseline |
+|---|---:|---:|
+| precision | 1.00 | 0.78 |
+| recall | 1.00 | 1.00 |
+| false-positive rate | 0.00 | 0.50 |
+| citation-ID accuracy | 1.00 | 0.00 |
+| compensatory-minutes MAE | 0.0 | n/a |
 
-The bounded LLM layer runs on Qwen Cloud's OpenAI-compatible Model Studio endpoint:
+This is an 11-case engineering evaluation: seven positive labels, four negative,
+and two independently documented/court-derived cases. Most labels are synthetic
+and encode the product's review policy. It tests consistency and provenance, not
+legal validity, real-world accuracy, or case outcomes. `--online` is a separate,
+variable raw-Qwen comparison.
 
-- **`qwen3.7-max`** — the agent's reasoning and the complaint narrative
-- **`qwen3.6-flash`** — default workhorse for extraction and reason classification
-  (JSON-structured output)
-- **`qwen3.7-plus`** — multimodal reading of scanned IEP PDFs; the deployed
-  Function Compute demo can also use it as the lower-latency workhorse
-- Reason-deduplication and the deterministic fallbacks keep token use minimal
+## Safety and privacy
 
-The agent is deployed to **Alibaba Cloud Function Compute**; the deployed function
-invokes Model Studio on every request (see `deploy/`).
+- Public demo: synthetic or already-de-identified records only.
+- Text redaction reduces direct identifiers but is not a FERPA guarantee.
+- Vision requires an explicit redacted/synthetic attestation before upload.
+- Empty public API calls run only a synthetic example; custom cases require a
+  Bearer token.
+- Drafts are information and drafting support, not legal advice.
+- The 15%/three-consecutive-session policy is a configurable review signal.
+- Cross-case analysis requires authorization and does not determine liability or
+  guarantee a remedy.
 
-## How we measured it — the credibility story
+## What we learned
 
-Every incumbent's accuracy claim is unfalsifiable marketing. We ship a labeled eval
-and report the numbers, including the one that matters most — the false-positive
-rate (telling a parent they have a case when they don't):
+The credible AI story is not “let the model decide.” It is designing a boundary
+where a model is useful on language while every consequential number and published
+claim remains inspectable. The second lesson is that provenance must describe what
+actually happened: a fallback is a valid safe result, but it cannot be labeled as
+a successful model result.
 
-| metric | **grounded** | raw-Qwen baseline |
-|---|---|---|
-| precision | 1.00 | 0.67 |
-| recall | 1.00 | 0.67 |
-| false-positive rate | **0.00** | 0.50 |
-| citation accuracy | **1.00** | 0.52 |
-| compensatory-minutes MAE | **0.0** | n/a |
+## What is next
 
-The grounded system never emits an unverifiable citation and never over-flags;
-the baseline (raw Qwen with no ledger and no corpus) does both — it *misses* a
-third of real violations, *over-flags* half the compliant ones, and cites real,
-on-point law only about half the time. (Honest caveat: most labels are synthetic
-and track our own rule, so the headline is the baseline contrast; a few cases now
-carry independent, court-derived labels — e.g. *Van Duyn*, a 50% tutoring
-shortfall held material — which the system also gets right. Full validation still
-needs a corpus of advocate-labeled IEPs, on the roadmap.)
+- Advocate-labeled, de-identified validation under an approved data protocol.
+- State-specific modules reviewed by qualified local experts.
+- Short-lived cloud identities/RAM roles instead of long-lived OSS keys.
+- Accessibility and adversarial privacy testing.
+- Calendar/email connectors behind the same explicit approval contract.
 
-## Challenges
+## Three-minute demo
 
-- Designing the deterministic/LLM boundary so the LLM is genuinely bounded — it
-  populates scaffolds but never decides materiality or authors a citation.
-- Making every legal claim verifiable: the corpus + evidence-by-ID layer rejects
-  any violation that isn't tied to a real provision and real log entries.
-- Keeping the whole thing runnable and testable offline so the deterministic core
-  stands on its own, then layering Qwen on top.
+**0:00–0:20 — Problem.** Show a redacted IEP promise and a messy service-log CSV.
+“The hard part is not reading one document. It is reconstructing a defensible
+record across months.”
 
-## Accomplishments
+**0:20–0:55 — Live input.** In the case desk, choose **Upload redacted case**, paste
+the service line, upload the sample CSV, and run the live Qwen review.
 
-- A working end-to-end Track 4 agent with a human checkpoint at every critical
-  decision and a full audit trail.
-- 134 passing tests; the deterministic core reproduces a real worked example exactly
-  (108 required vs 72 delivered → a 720-minute, 22% shortfall).
-- A published eval — the thing no incumbent reports.
-- A live Streamlit advocate case desk generated from the real backend workflow, showing
-  the agent run, bounded Qwen tasks, deterministic ledger, evidence chain,
-  approval queue, complaint draft, and district-wide systemic pattern.
+**0:55–1:25 — Boundary.** Show actual Qwen call provenance beside the deterministic
+ledger. Point out any fallback honestly. Say: “Qwen interprets language; it never
+does this arithmetic or chooses a citation.”
 
-## What's next
+**1:25–1:55 — Evidence.** Open a finding and show its IEP excerpt, exact log IDs,
+controlled authorities, and downloadable packet. Call the threshold a review
+signal, not a legal conclusion.
 
-- Advocate-labeled de-identified IEPs for a real precision/recall validation.
-- More states' procedural pathways beyond the federal floor.
-- MCP integrations: calendar (track sessions in near-real-time), email (timestamped
-  inquiries as evidence), document store on OSS.
-- Due-process and IEE drafting; the self-hosted open-weight Qwen privacy path.
+**1:55–2:20 — Human/external action.** Show the approval gate, then an authenticated
+Function Compute response containing an OSS URI and SHA-256 receipt from a
+pre-approved synthetic/de-identified request.
 
-## Built with
+**2:20–2:40 — Evaluation.** Run the offline benchmark and state its limitations in
+one sentence.
 
-Python · Qwen Cloud (Model Studio: qwen3.7-max, qwen3.6-flash, qwen3.7-plus) ·
-Alibaba Cloud Function Compute · OpenAI-compatible SDK · Apache-2.0, fully open
-source.
-
----
-
-# 3-minute demo video script
-
-**0:00–0:20 — The hook.**
-"8 million US kids have a legal right to special-education services written into an
-IEP. Schools routinely under-deliver — and proving it is on the parent. Advocates
-cost $200 an hour. Due Process is the advocate that runs all year."
-
-**0:20–0:45 — The wedge.**
-Show the positioning line: "From IEP review, which is crowded, to IEP enforcement,
-which is open." One sentence: every other AI tool preps you for the meeting; this
-one checks whether the school delivered after it.
-
-**0:45–1:45 — Live demo (the core).**
-Run `streamlit run src/due_process/examples/case_desk.py`. Show that the advocate
-desk starts as a case file, then click **Run live Qwen review** so Qwen Cloud runs
-the language-heavy extraction/classification while the UI streams progress. When
-the result lands, show the **deterministic** ledger computing 720 minutes (22%)
-unexcused, the approval queue holding the complaint before send, and claim cards
-keeping the IEP line, service-log entries, legal authorities, and draft remedy
-attached. Mention **Fast local preview** only as the rehearsal path when cloud
-latency is not useful. Then show the district panel:
-"Now multiply it — 12 families collapse into one de-identified district complaint.
-That's the move that fixes it for everyone, not one kid at a time."
-
-**1:45–2:15 — The boundary + grounding.**
-Show the README table: deterministic core vs. bounded Qwen. Emphasize: the LLM
-never does math or law; a hallucinated citation is impossible by construction; a
-human approves the send.
-
-**2:15–2:40 — The eval.**
-Run `python -m due_process.evaluation.run_eval`. Point at false-positive rate 0.00
-and citation accuracy 1.00 vs. the raw-Qwen baseline. "No incumbent reports this."
-
-**2:40–3:00 — Deployment + close.**
-Show `deploy/` and the Function Compute response with `"llm": "qwen-online"`.
-Close: "Grounded. Deterministic where it must be. Open source. Due Process —
-holding schools to the contract they signed."
+**2:40–3:00 — Proof and close.** Show Function Compute in Alibaba Workbench, the
+public repository, architecture, and passing CI. “Receipts over rhetoric: a
+reproducible record, bounded AI, and a human in control.”

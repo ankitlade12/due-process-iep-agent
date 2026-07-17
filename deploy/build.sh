@@ -15,7 +15,8 @@ PYVER="3.10"
 rm -rf "$DIST"
 mkdir -p "$DIST"
 
-# 1) Third-party deps (openai + its compiled deps) as Linux/cp310 wheels.
+# 1) Third-party deps (OpenAI-compatible Qwen client) as Linux/cp310 wheels.
+# OSS upload uses a signed HTTPS request from Python's standard library.
 # NOTE: we install from a newer local Python, so pip evaluates environment
 # markers (e.g. `python_version < "3.11"`) against the build machine, not the
 # 3.10 target — which silently drops backports like exceptiongroup (needed by

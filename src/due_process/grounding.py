@@ -7,10 +7,10 @@ Every flagged violation links to three things a parent can click and verify:
   3. the governing IDEA / state regulation that defines the standard.
 
 This module assembles those links into an :class:`EvidenceBundle` and enforces
-two invariants that make hallucination impossible *by construction*:
+two structural invariants that prevent unsupported IDs from being published:
 
-  * every legal citation must resolve to a real entry in
-    :mod:`due_process.corpus` (no inventing a standard), and
+  * every legal citation must resolve to an entry in the controlled
+    :mod:`due_process.corpus`, and
   * a minutes-based violation must point at the actual log entries the
     deterministic ledger counted (no inventing a shortfall).
 """
@@ -74,7 +74,8 @@ def verify_citations(provision_ids: List[str]) -> List[LegalProvision]:
     """Resolve and validate citation ids against the corpus.
 
     Raises :class:`KeyError` (via the corpus) if any id is not a real provision —
-    the guard that prevents citing a legal standard that does not exist.
+    the guard that prevents publishing a citation ID absent from the corpus.
+    It does not establish that the corpus is complete or the authority controls.
     """
     corpus.validate_refs(provision_ids)
     return [corpus.get(pid) for pid in provision_ids]

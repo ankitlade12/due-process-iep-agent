@@ -2,6 +2,11 @@
 
 _Concept, positioning, and build spec. Idea 1 from the Qwen Cloud hackathon analysis. Prepared June 30, 2026._
 
+> **Archived discovery brief.** This file preserves early product exploration and
+> contains superseded market, model, privacy, and legal assumptions. It is not the
+> current product specification. Use `README.md`, `docs/SUBMISSION.md`,
+> `docs/architecture.md`, and `SECURITY.md` for current claims and behavior.
+
 ---
 
 ## One line
@@ -14,7 +19,7 @@ A grounded compliance agent that tracks whether a school actually delivers the s
 
 ## The problem
 
-Over 8 million K through 12 students in the US have disabilities and a legal right under IDEA to specific services written into an Individualized Education Program. The IEP is a legally binding contract. Schools routinely under deliver: shorter sessions than written, missed sessions never made up, group settings where the IEP says individual, services that never start for weeks.
+Millions of students receive services under IDEA through an Individualized Education Program. The legal effect and remedy depend on governing law and case-specific facts; an IEP should not be marketed simply as a private contract.
 
 The enforcement system puts the entire burden on the parent. Private special education advocates run $150 to $250 an hour, so most families cannot afford one and go without. The result is that kids do not get what the law guarantees, and almost no one checks.
 
@@ -206,9 +211,9 @@ This single move beats every incumbent's unfalsifiable marketing and fixes the a
 
 ## Data, privacy, and FERPA (real)
 
-IEPs and service logs are student education records under FERPA, 20 U.S.C. 1232g and 34 C.F.R. Part 99. Treat them accordingly.
+IEPs and service logs may be education records containing direct and indirect identifiers under FERPA, 20 U.S.C. 1232g and 34 C.F.R. Part 99. Treat them accordingly.
 
-- Default to redacting personally identifiable information before any cloud model call, or run the open weight Qwen3.6-35B-A3B locally or in a private VPC so identifiable records never leave the parent's control. Document the data flow either way.
+- The public demo accepts only synthetic or already-de-identified records. Automated redaction is defense in depth, not a compliance guarantee. Vision images must be redacted before cloud upload. Document authorization, retention, access, deletion, and incident response before real use.
 - Encrypt at rest with OSS server side encryption and in transit. No training on user uploads. Per user isolation.
 - This matches the privacy claims the incumbents make, stated concretely rather than as a slogan.
 
@@ -274,7 +279,7 @@ One framing caution: keep it information and drafting support, not legal advice,
 
 - IDEA regulations verified this session against the eCFR (ecfr.gov) and the Cornell Legal Information Institute (law.cornell.edu): 34 C.F.R. 300.320, 300.321, 300.322, 300.323, 300.324, 300.502, 300.503, 300.504, 300.506, and the 300.507 to 300.516 due process subpart. Authority cite 20 U.S.C. 1221e-3, 1406, 1411 to 1419, 3474.
 - Statutory and case citations from established special education law, to be confirmed against primary sources and localized per state before reliance: FAPE 20 U.S.C. 1401(9) and 1412(a)(1); state complaint 34 C.F.R. 300.151 to 300.153; two year limitations 20 U.S.C. 1415(b)(6) and (f)(3)(C); Endrew F. v. Douglas County (2017); Van Duyn v. Baker Sch. Dist. (9th Cir. 2007); Reid v. District of Columbia (D.C. Cir. 2005); FERPA 20 U.S.C. 1232g and 34 C.F.R. Part 99.
-- 8 million plus students, the binding nature of the IEP, the material failure standard, the two year compensatory deadline, and the 108 versus 72 sessions example: IEP Says guidance, North Carolina Legal Services, Susan Luger Associates, and a state DPI guidance document.
+- Early secondary-source market/legal notes in this archived brief must not be used as current product claims; verify current statistics and legal propositions against primary sources.
 - Parent facing tools, Undivided, IEP Advocate.ai, IEP Compass, and the AIEP summarize and translate tool with the 227 versus 100 minutes catch: vendor sites, The Frisc, and Reboot Democracy.
 - School side service tracking, Euna, AbleSpace, Brolly: vendor sites and Level Data.
 - Qwen models and Alibaba Cloud Model Studio, model lineup, context windows, prompt caching, the open weight Qwen3.6-35B-A3B, and the Singapore compatible endpoint: Qwen official blog, OpenRouter model listing, and 2026 model writeups.

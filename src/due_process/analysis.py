@@ -14,7 +14,7 @@ from datetime import date
 from typing import List, Optional
 
 from .deadlines import due_process_deadline, state_complaint_deadline
-from .grounding import EvidenceBundle, build_evidence_bundle
+from .grounding import EvidenceBundle, assert_grounded
 from .ledger import compute_ledger
 from .materiality import (
     DEFAULT_CONFIG,
@@ -95,7 +95,9 @@ def analyze_commitment(
         dp_anchor = discovery_date if discovery_date is not None else v.window_end
         due_process_deadlines.append(
             due_process_deadline(v.id, dp_anchor, today, state=state))
-    bundles = [build_evidence_bundle(v) for v in violations]
+    # This is the publication gate: a complaint cannot consume a violation
+    # unless the factual evidence and legal authority both validate.
+    bundles = [assert_grounded(v) for v in violations]
 
     return CommitmentAnalysis(
         commitment=commitment,

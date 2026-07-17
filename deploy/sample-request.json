@@ -1,0 +1,17 @@
+{
+  "case_id": "synthetic-demo-001",
+  "iep_text": "Speech-Language Therapy: 1 x 30 minutes per week, individual, pull-out.",
+  "window_start": "2026-01-01",
+  "window_end": "2026-01-31",
+  "instructional_periods": 4,
+  "logs": [
+    {
+      "id": "log-001",
+      "commitment_id": "svc-1",
+      "date": "2026-01-08",
+      "minutes_delivered": 0,
+      "status": "missed",
+      "missed_reason_text": "Provider absent; no substitute"
+    }
+  ]
+}

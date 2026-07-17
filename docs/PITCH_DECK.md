@@ -1,0 +1,37 @@
+# Pitch deck outline (7 slides)
+
+## 1. Receipts over rhetoric
+
+**Due Process** — continuous, evidence-backed IEP service-delivery review. One
+visual: IEP promise → delivery logs → cited human-review packet.
+
+## 2. The evidence reconstruction problem
+
+Show one service promise beside inconsistent rows across months. Message: families
+and advocates lose time reconciling records, not just understanding one document.
+
+## 3. Product
+
+Three screenshots: redacted upload, deterministic ledger, evidence chain. Call out
+the downloadable packet and review threshold as a configurable policy.
+
+## 4. Why Qwen, why this boundary
+
+Qwen: messy extraction/classification/narrative. Code: math/deadlines/grounding.
+Show actual-call provenance and fallback labeling. This is the trust slide.
+
+## 5. Autopilot with brakes
+
+Workflow diagram ending in an explicit human approval gate, then authenticated
+Function Compute → Alibaba OSS → SHA-256 receipt.
+
+## 6. Evidence, not vanity metrics
+
+Show stable offline benchmark and its limitation: 11 cases, mostly synthetic,
+engineering validation only. Add passing tests/CI and the next validation cohort.
+
+## 7. Distribution and next milestone
+
+Initial users: nonprofit parent centers, pro-bono advocates, and legal clinics.
+Open-source core lowers trust/procurement friction. Next milestone: partner-reviewed,
+de-identified dataset plus one state-specific expert-reviewed module.

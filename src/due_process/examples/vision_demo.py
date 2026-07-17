@@ -91,7 +91,8 @@ def main() -> None:
         return
 
     print(f"\nSending the IMAGE to Qwen vision ({client.config.vision_model}) ...")
-    transcription = read_iep_image(str(_IMG), client)
+    transcription = read_iep_image(
+        str(_IMG), client, image_is_redacted_or_synthetic=True)
     print("\n--- QWEN VISION TRANSCRIPTION ---")
     print(transcription)
 

@@ -46,6 +46,10 @@ class LetterContext:
     state_agency_name: str = "[State Education Agency]"
     letter_date: Optional[date] = None
     case_id: str = ""
+    parent_address: str = "[Parent Address]"
+    parent_contact: str = "[Parent Email / Phone]"
+    student_address: str = "[Student Address]"
+    school_address: str = "[School Address]"
 
 
 def _fmt_date(d: Optional[date]) -> str:
@@ -185,9 +189,12 @@ def draft_state_complaint(
 
     body = "\n\n".join([
         _fmt_date(context.letter_date),
-        f"From: {context.parent_name}\nTo: {context.state_agency_name}; "
+        f"From: {context.parent_name}, {context.parent_address}, "
+        f"{context.parent_contact}\nTo: {context.state_agency_name}; "
         f"copy to {context.district_name}, {context.school_name}",
-        f"Re: State Complaint under IDEA — {context.student_name}",
+        f"Re: State Complaint under IDEA — {context.student_name}\n"
+        f"Student address: {context.student_address}\n"
+        f"School: {context.school_name}, {context.school_address}",
         "I. Nature of the Complaint\n"
         "This is a state complaint under 34 C.F.R. §§ 300.151–300.153 "
         "alleging that the district failed to implement the student's IEP as "
@@ -195,14 +202,14 @@ def draft_state_complaint(
         "provide a free appropriate public education under 20 U.S.C. "
         "§§ 1401(9) and 1412(a)(1).",
         "II. The Delivery Shortfall\n" + "\n\n".join(facts_sections),
-        "III. Why This Is a Material Failure\n"
+        "III. Why This Warrants Review\n"
         "Under the material-failure-to-implement standard (Van Duyn v. Baker "
-        "Sch. Dist.), a school's failure to implement a material portion of the "
-        "IEP denies FAPE. The shortfall documented above crosses that threshold "
-        "on the records cited.",
+        "Sch. Dist.), more than a minor discrepancy may deny FAPE. The product's "
+        "transparent review threshold flagged the documented shortfall for a "
+        "human decision; it is not a judicial finding.",
         "IV. Relief Requested\n" + relief,
         "V. Timeliness\n" + timeliness,
-        f"Respectfully,\n{context.parent_name}",
+        f"Respectfully,\n{context.parent_name}\n[Signature]",
         _citation_block(citations),
         _DISCLAIMER,
     ])
@@ -224,9 +231,9 @@ def draft_systemic_complaint(
     """Draft a district-wide *systemic* state complaint (34 C.F.R. 300.151(b)).
 
     Reports aggregate, de-identified patterns — counts and minute totals across
-    many students, never an individual record. A systemic finding obligates the
-    state agency to order district-wide relief, fixing services for every
-    affected child rather than one at a time.
+    many students, never an individual record. The result supports a request for
+    broader investigation and corrective action; it does not predetermine what a
+    state agency must find or order.
     """
     citations: List[str] = [
         "cfr_300_151_153", "cfr_300_323", "cfr_300_320",
@@ -241,8 +248,8 @@ def draft_systemic_complaint(
         sections.append(
             f"  - {service}: of {f.n_students_with_service} students receiving "
             f"this service in {f.district}, {f.n_students_material} "
-            f"({f.material_student_share:.0%}) experienced a material failure to "
-            f"implement. Aggregate unexcused shortfall: {f.total_unexcused_minutes} "
+            f"({f.material_student_share:.0%}) crossed the configured review "
+            f"threshold. Aggregate unexcused shortfall: {f.total_unexcused_minutes} "
             f"minutes ({f.aggregate_shortfall_pct:.1%} of required service time). "
             f"(Reported only because at least {f.k_threshold} students are "
             f"affected; no individual student is identified.)"
@@ -256,22 +263,22 @@ def draft_systemic_complaint(
         "I. Nature of the Complaint\n"
         "This is a state complaint under 34 C.F.R. §§ 300.151–300.153. It alleges "
         "a systemic failure to implement IEPs across the district. Under 34 "
-        "C.F.R. § 300.151(b), where a complaint alleges a failure that affects "
-        "multiple children, the state education agency must resolve the systemic "
-        "issue, not merely the individual case.",
+        "C.F.R. § 300.151(b), the state complaint process can address appropriate "
+        "future provision of services and corrective action. These aggregate "
+        "records request review of a potentially systemic issue.",
         "II. The District-Wide Pattern (de-identified)\n" + "\n\n".join(sections),
-        "III. Why This Is a Material, Systemic Failure\n"
+        "III. Why This Pattern Warrants Systemic Review\n"
         "The aggregate shortfalls above are computed from service-delivery "
         "records under the material-failure-to-implement standard (Van Duyn v. "
-        "Baker Sch. Dist.). The breadth across students establishes a systemic, "
-        "not isolated, failure.",
+        "Baker Sch. Dist.). The breadth across students is a screening signal "
+        "for investigation, not a final legal determination.",
         "IV. Relief Requested\n"
-        "  1. A finding of systemic failure to implement IEPs district-wide.\n"
-        "  2. District-wide corrective action (staffing, scheduling, and "
-        "monitoring) to prevent recurrence.\n"
-        f"  3. Compensatory services for all affected students, an aggregate "
-        f"equitable starting position of approximately {total_comp} minutes "
-        f"({total_comp / 60:.1f} hours) under Reid v. District of Columbia.",
+        "  1. Investigation of whether the aggregate pattern reflects a systemic "
+        "failure to implement IEPs.\n"
+        "  2. Any corrective monitoring the agency determines appropriate.\n"
+        f"  3. Individualized review of potential compensatory services; the "
+        f"aggregate screening estimate is approximately {total_comp} minutes "
+        f"({total_comp / 60:.1f} hours) and is not a requested mechanical award.",
         f"Respectfully,\n{context.parent_name}",
         _citation_block(citations),
         _DISCLAIMER,
