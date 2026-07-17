@@ -117,6 +117,62 @@ class AgentRun:
         return [f"[{e.step}] {e.detail}" for e in self.audit]
 
 
+@dataclass
+class PreparedEnforcementInputs:
+    """Language-task results awaiting explicit human confirmation.
+
+    Preparing and executing are separate so a UI can show/edit Qwen's parsed
+    commitment and resolve ambiguous reasons before deterministic analysis.
+    The same objects are then consumed by :func:`run_enforcement`; no model call
+    is silently repeated after the human decision.
+    """
+
+    extracted: List[ExtractedCommitment] = field(default_factory=list)
+    classification: ClassificationOutcome = field(
+        default_factory=ClassificationOutcome)
+
+
+def _redactor_for_context(
+    context: LetterContext, *, redact: bool
+) -> Optional[Redactor]:
+    if not redact:
+        return None
+    extra_identifiers = {
+        value: label
+        for value, label in (
+            (context.parent_address, "[PARENT_ADDRESS]"),
+            (context.parent_contact, "[PARENT_CONTACT]"),
+            (context.student_address, "[STUDENT_ADDRESS]"),
+            (context.school_address, "[SCHOOL_ADDRESS]"),
+        )
+        if value and not value.startswith("[")
+    }
+    return Redactor.for_case(
+        student_name=context.student_name,
+        parent_name=context.parent_name,
+        extra=extra_identifiers,
+    )
+
+
+def prepare_enforcement_inputs(
+    logs: List[ServiceLog],
+    *,
+    iep_text: str,
+    context: LetterContext,
+    client: Optional[LLMClient] = None,
+    redact: bool = True,
+) -> PreparedEnforcementInputs:
+    """Run only bounded language tasks, stopping before consequential analysis."""
+    redactor = _redactor_for_context(context, redact=redact)
+    extracted = extract_commitments(
+        iep_text, client=client,
+        source_uri="oss://ieps/this-student.pdf", redactor=redactor,
+    )
+    classification = classify_logs(logs, client=client, redactor=redactor)
+    return PreparedEnforcementInputs(
+        extracted=extracted, classification=classification)
+
+
 def run_enforcement(
     logs: List[ServiceLog],
     *,
@@ -132,6 +188,8 @@ def run_enforcement(
     state: str = "",
     client: Optional[LLMClient] = None,
     policy: Optional[ApprovalPolicy] = None,
+    prepared_inputs: Optional[PreparedEnforcementInputs] = None,
+    require_all_ambiguities_resolved: bool = False,
     config: MaterialityConfig = DEFAULT_CONFIG,
     redact: bool = True,
 ) -> AgentRun:
@@ -143,30 +201,20 @@ def run_enforcement(
     policy = policy or ApprovalPolicy()
     today = now.date()
     run = AgentRun()
-    extra_identifiers = {
-        value: label
-        for value, label in (
-            (context.parent_address, "[PARENT_ADDRESS]"),
-            (context.parent_contact, "[PARENT_CONTACT]"),
-            (context.student_address, "[STUDENT_ADDRESS]"),
-            (context.school_address, "[SCHOOL_ADDRESS]"),
-        )
-        if value and not value.startswith("[")
-    }
-    redactor = (Redactor.for_case(
-        student_name=context.student_name,
-        parent_name=context.parent_name,
-        extra=extra_identifiers,
-    ) if redact else None)
+    redactor = _redactor_for_context(context, redact=redact)
 
     def log_step(step: str, detail: str) -> None:
         run.audit.append(AuditEntry(step=step, detail=detail, at=now))
 
     # 1) Extract commitments (unless caller supplied them) ---------------------
     if commitments is None:
-        run.extracted = extract_commitments(
-            iep_text or "", client=client,
-            source_uri="oss://ieps/this-student.pdf", redactor=redactor,
+        run.extracted = (
+            list(prepared_inputs.extracted)
+            if prepared_inputs is not None
+            else extract_commitments(
+                iep_text or "", client=client,
+                source_uri="oss://ieps/this-student.pdf", redactor=redactor,
+            )
         )
         method = run.extracted[0].method if run.extracted else "none"
         detail = (f"Parsed {len(run.extracted)} commitment(s) from the IEP "
@@ -206,7 +254,11 @@ def run_enforcement(
                  f"commitment {target}.")
 
     # 2) Classify missed/short reasons ----------------------------------------
-    run.classification = classify_logs(logs, client=client, redactor=redactor)
+    run.classification = (
+        prepared_inputs.classification
+        if prepared_inputs is not None
+        else classify_logs(logs, client=client, redactor=redactor)
+    )
     methods: Dict[str, int] = {}
     for result in run.classification.classifications.values():
         methods[result.method] = methods.get(result.method, 0) + 1
@@ -217,14 +269,27 @@ def run_enforcement(
     if run.classification.review_items:
         resolved = policy.resolve_ambiguous(run.classification.review_items)
         applied = 0
+        applied_ids = set()
         by_id = {log.id: log for log in run.classification.review_items}
         for log_id, label in resolved.items():
             if log_id in by_id and label in (
                 ExcusedClass.EXCUSED, ExcusedClass.UNEXCUSED
             ):
                 by_id[log_id].excused = label
+                classification = run.classification.classifications.get(log_id)
+                if classification is not None:
+                    classification.excused = label
+                    classification.needs_human = False
+                    classification.rationale = (
+                        f"Human resolved as {label.value}. "
+                        f"{classification.rationale}")
                 applied += 1
+                applied_ids.add(log_id)
         pending = len(run.classification.review_items) - applied
+        run.classification.review_items = [
+            log for log in run.classification.review_items
+            if log.id not in applied_ids
+        ]
         run.checkpoints.append(Checkpoint(
             "review_ambiguous",
             "Human resolves ambiguous excused/unexcused calls.",
@@ -235,6 +300,11 @@ def run_enforcement(
             log_step("checkpoint",
                      f"{pending} ambiguous reason(s) remain pending; held out "
                      "of the actionable shortfall.")
+            if require_all_ambiguities_resolved:
+                log_step(
+                    "checkpoint",
+                    "Analysis blocked until every ambiguous reason is resolved.")
+                return run
         else:
             log_step("checkpoint", "Human resolved all ambiguous reasons.")
 

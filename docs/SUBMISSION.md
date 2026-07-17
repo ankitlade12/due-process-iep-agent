@@ -113,7 +113,8 @@ a successful model result.
 record across months.”
 
 **0:20–0:55 — Live input.** In the case desk, choose **Upload redacted case**, paste
-the service line, upload the sample CSV, and run the live Qwen review.
+the service line, upload the sample CSV, and run the live Qwen review. Correct one
+extracted field, confirm it, and resolve one deliberately ambiguous log reason.
 
 **0:55–1:25 — Boundary.** Show actual Qwen call provenance beside the deterministic
 ledger. Point out any fallback honestly. Say: “Qwen interprets language; it never
@@ -123,9 +124,9 @@ does this arithmetic or chooses a citation.”
 controlled authorities, and downloadable packet. Call the threshold a review
 signal, not a legal conclusion.
 
-**1:55–2:20 — Human/external action.** Show the approval gate, then an authenticated
-Function Compute response containing an OSS URI and SHA-256 receipt from a
-pre-approved synthetic/de-identified request.
+**1:55–2:20 — Human/external action.** Review the generated packet, click the
+separate storage approval, and show the live Function Compute response containing
+the OSS URI, SHA-256 receipt, request ID, and audit event.
 
 **2:20–2:40 — Evaluation.** Run the offline benchmark and state its limitations in
 one sentence.

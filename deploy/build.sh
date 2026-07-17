@@ -22,13 +22,14 @@ mkdir -p "$DIST"
 # 3.10 target — which silently drops backports like exceptiongroup (needed by
 # anyio on 3.10). List those explicitly so the bundle actually imports on FC.
 python3 -m pip install --quiet --target "$DIST" \
+  --ignore-installed \
   --platform manylinux2014_x86_64 \
   --python-version "$PYVER" --implementation cp --abi cp310 \
   --only-binary=:all: \
   openai exceptiongroup
 
 # 2) Our own package is pure Python — install it without pulling deps again.
-python3 -m pip install --quiet --target "$DIST" --no-deps "$HERE/.."
+python3 -m pip install --quiet --target "$DIST" --no-deps --upgrade "$HERE/.."
 
 # 3) The Function Compute handler at the bundle root.
 cp "$HERE/handler.py" "$DIST/handler.py"

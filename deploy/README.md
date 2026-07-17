@@ -48,6 +48,12 @@ s invoke
 The empty invocation returns a synthetic draft plus actual-call provenance. It
 does not infer “Qwen online” merely because a key exists.
 
+Set the deployed trigger URL on the Streamlit host (not inside Function Compute):
+
+```bash
+export DUE_PROCESS_FUNCTION_URL="https://your-function-trigger-url"
+```
+
 ## Authenticated synthetic/de-identified custom request
 
 ```bash
@@ -80,6 +86,20 @@ exercise OSS. A successful response includes:
 The exact call count may vary. For submission proof, capture Alibaba Workbench
 showing the deployed Function Compute resource and a safe synthetic invocation;
 ensure the screenshot contains no secret or student data.
+
+The case desk uses a narrower action after the human reviews the packet. It sends
+the exact approved packet with `"action":"store_evidence_packet"`; Function
+Compute verifies the Bearer token and approval flag, stores the bytes in OSS, and
+returns a matching SHA-256 receipt.
+
+Use `sample-store-request.json` for a synthetic command-line proof:
+
+```bash
+curl -X POST "$FUNCTION_URL" \
+  -H "Authorization: Bearer $DUE_PROCESS_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data-binary @deploy/sample-store-request.json
+```
 
 ## Local boundary check
 

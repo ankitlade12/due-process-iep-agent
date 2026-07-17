@@ -70,6 +70,67 @@ def test_empty_request_is_synthetic_and_reports_real_provenance(
     assert result["needs_human"] is True
 
 
+def test_packet_action_requires_explicit_approval(fc_handler, monkeypatch):
+    monkeypatch.setenv("DUE_PROCESS_API_TOKEN", "correct-token")
+    event = {
+        "headers": {"Authorization": "Bearer correct-token"},
+        "body": json.dumps({
+            "action": "store_evidence_packet",
+            "case_id": "case-1",
+            "evidence_packet": "reviewed packet",
+            "approval": {},
+        }),
+    }
+    result = json.loads(fc_handler.handler(event, None))
+    assert result["ok"] is False
+    assert result["error"] == "unauthorized"
+
+
+def test_packet_action_stores_exact_approved_bytes(fc_handler, monkeypatch):
+    monkeypatch.setenv("DUE_PROCESS_API_TOKEN", "correct-token")
+    stored = {}
+
+    class Receipt:
+        uri = "oss://private/evidence-packets/case-1/hash.txt"
+        sha256 = "abc123"
+
+        def to_dict(self):
+            return {
+                "provider": "alibaba-oss",
+                "uri": self.uri,
+                "sha256": self.sha256,
+                "size_bytes": len("reviewed packet"),
+                "stored_at": "2026-07-17T12:00:00Z",
+            }
+
+    class Store:
+        def put_evidence_packet(self, packet, *, case_id):
+            stored["packet"] = packet
+            stored["case_id"] = case_id
+            return Receipt()
+
+    monkeypatch.setattr(
+        fc_handler.OSSArtifactStore, "from_env", lambda: Store())
+    monkeypatch.setattr(
+        fc_handler, "LLMClient",
+        lambda: (_ for _ in ()).throw(AssertionError("Qwen must not rerun")))
+    event = {
+        "headers": {"Authorization": "Bearer correct-token"},
+        "body": json.dumps({
+            "action": "store_evidence_packet",
+            "case_id": "case-1",
+            "evidence_packet": "reviewed packet",
+            "approval": {"store_evidence_packet": True},
+        }),
+    }
+    result = json.loads(fc_handler.handler(event, None))
+    assert result["ok"] is True
+    assert result["action"] == "store_evidence_packet"
+    assert result["artifact_receipt"]["uri"].startswith("oss://")
+    assert stored == {"packet": "reviewed packet", "case_id": "case-1"}
+    assert any("human approval" in item.lower() for item in result["audit"])
+
+
 class _OfflineClient:
     available = False
     traces = []

@@ -14,16 +14,30 @@ import html
 import queue
 import threading
 import time
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from typing import Any
 
-from due_process.agent import ApprovalPolicy, run_enforcement
+from due_process.agent import (
+    ApprovalPolicy,
+    PreparedEnforcementInputs,
+    prepare_enforcement_inputs,
+    run_enforcement,
+)
 from due_process.analysis import analyze_commitment
+from due_process.cloud_action import FunctionComputeArtifactClient
 from due_process.filing import export_evidence_packet
 from due_process.ingest import load_logs_csv
 from due_process.instruments.drafter import LetterContext, draft_systemic_complaint
 from due_process.llm.client import default_client
-from due_process.models import LogStatus
+from due_process.models import (
+    DeliverySetting,
+    ExcusedClass,
+    FrequencyPeriod,
+    LogStatus,
+    ServiceLocation,
+    ServiceType,
+)
 from due_process.scenarios import district_caseload, worked_example_speech
 from due_process.systemic import StudentCase, aggregate_systemic
 
@@ -37,6 +51,57 @@ class DraftOnlyDemoPolicy(ApprovalPolicy):
 
     def confirm_commitments(self, extracted):
         return True
+
+
+class ConfirmedReviewPolicy(DraftOnlyDemoPolicy):
+    """Human decisions captured by the case-desk review form."""
+
+    name = "interactive human review"
+
+    def __init__(self, ambiguity_decisions: dict[str, ExcusedClass]):
+        self.ambiguity_decisions = ambiguity_decisions
+
+    def resolve_ambiguous(self, items):
+        return {
+            item.id: self.ambiguity_decisions[item.id]
+            for item in items if item.id in self.ambiguity_decisions
+        }
+
+
+@dataclass
+class PreparedCaseReview:
+    """In-memory review state kept server-side between Streamlit reruns."""
+
+    iep_text: str
+    logs: list
+    window_start: date
+    window_end: date
+    instructional_periods: int
+    context: LetterContext
+    state: str
+    include_systemic_demo: bool
+    use_qwen: bool
+    client: Any
+    prepared_inputs: PreparedEnforcementInputs
+    trace_start: int
+
+    @property
+    def commitment(self):
+        return self.prepared_inputs.extracted[0].commitment
+
+    def ambiguity_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for log in self.prepared_inputs.classification.review_items:
+            result = self.prepared_inputs.classification.classifications[log.id]
+            rows.append({
+                "id": log.id,
+                "date": log.date.isoformat(),
+                "reason": log.missed_reason_text or "No reason recorded",
+                "rationale": result.rationale,
+                "method": result.method,
+                "confidence": result.confidence,
+            })
+        return rows
 
 
 def _minutes(value: int) -> str:
@@ -86,6 +151,114 @@ def _systemic_payload() -> dict[str, Any]:
     }
 
 
+def prepare_case_review(
+    *,
+    iep_text: str,
+    logs: list,
+    window_start: date,
+    window_end: date,
+    instructional_periods: int,
+    context: LetterContext,
+    use_qwen: bool = True,
+    state: str = "",
+    include_systemic_demo: bool = False,
+) -> PreparedCaseReview:
+    """Run Qwen/rules only, then stop for a real human review checkpoint."""
+    if not iep_text.strip():
+        raise ValueError("IEP service text is required.")
+    if not logs:
+        raise ValueError("At least one service-log row is required.")
+    client = default_client() if use_qwen else None
+    trace_start = len(client.traces) if client is not None else 0
+    prepared = prepare_enforcement_inputs(
+        logs, iep_text=iep_text, context=context, client=client)
+    if not prepared.extracted:
+        raise ValueError(
+            "No service commitment was extracted. Include a service, frequency, "
+            "and duration in the IEP text.")
+    if len(prepared.extracted) != 1:
+        raise ValueError(
+            "This review accepts one service commitment per log upload. Split "
+            "multi-service records into one review per service.")
+    return PreparedCaseReview(
+        iep_text=iep_text,
+        logs=logs,
+        window_start=window_start,
+        window_end=window_end,
+        instructional_periods=instructional_periods,
+        context=context,
+        state=state,
+        include_systemic_demo=include_systemic_demo,
+        use_qwen=use_qwen,
+        client=client,
+        prepared_inputs=prepared,
+        trace_start=trace_start,
+    )
+
+
+def finalize_case_review(
+    review: PreparedCaseReview,
+    *,
+    service_type: str,
+    frequency_count: int,
+    frequency_period: str,
+    duration_minutes: int,
+    setting: str,
+    location: str | None = None,
+    group_size_max: int | None = None,
+    ambiguity_decisions: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Apply explicit human decisions and only then run deterministic analysis."""
+    if not 1 <= int(frequency_count) <= 20:
+        raise ValueError("Frequency must be between 1 and 20 sessions per period.")
+    if not 1 <= int(duration_minutes) <= 480:
+        raise ValueError("Duration must be between 1 and 480 minutes.")
+    decisions = {
+        log_id: ExcusedClass(value)
+        for log_id, value in (ambiguity_decisions or {}).items()
+        if value in (ExcusedClass.EXCUSED.value, ExcusedClass.UNEXCUSED.value)
+    }
+    required_ids = {
+        row["id"] for row in review.ambiguity_rows()
+    }
+    missing = required_ids - set(decisions)
+    if missing:
+        raise ValueError(
+            f"Resolve every ambiguous reason before analysis ({len(missing)} pending).")
+
+    original = review.commitment
+    confirmed = replace(
+        original,
+        service_type=ServiceType(service_type),
+        frequency_count=int(frequency_count),
+        frequency_period=FrequencyPeriod(frequency_period),
+        duration_minutes=int(duration_minutes),
+        setting=DeliverySetting(setting),
+        location=(
+            original.location if location is None
+            else ServiceLocation(location) if location else None),
+        group_size_max=(
+            original.group_size_max if group_size_max is None
+            else int(group_size_max) if group_size_max != 0 else None),
+    )
+    review.prepared_inputs.extracted[0].commitment = confirmed
+    return build_case_payload(
+        iep_text=review.iep_text,
+        logs=review.logs,
+        window_start=review.window_start,
+        window_end=review.window_end,
+        instructional_periods=review.instructional_periods,
+        context=review.context,
+        use_qwen=review.use_qwen,
+        state=review.state,
+        include_systemic_demo=review.include_systemic_demo,
+        client=review.client,
+        prepared_inputs=review.prepared_inputs,
+        policy=ConfirmedReviewPolicy(decisions),
+        trace_start=review.trace_start,
+    )
+
+
 def build_case_payload(
     *,
     iep_text: str,
@@ -97,11 +270,16 @@ def build_case_payload(
     use_qwen: bool = True,
     state: str = "",
     include_systemic_demo: bool = False,
+    client: Any = None,
+    prepared_inputs: PreparedEnforcementInputs | None = None,
+    policy: ApprovalPolicy | None = None,
+    trace_start: int | None = None,
 ) -> dict[str, Any]:
     """Run one real input bundle and return the UI's JSON-safe view model."""
     started = time.perf_counter()
-    client = default_client() if use_qwen else None
-    trace_start = len(client.traces) if client is not None else 0
+    client = client or (default_client() if use_qwen else None)
+    if trace_start is None:
+        trace_start = len(client.traces) if client is not None else 0
 
     run = run_enforcement(
         logs,
@@ -114,7 +292,9 @@ def build_case_payload(
         discovery_date=window_end,
         state=state,
         client=client,
-        policy=DraftOnlyDemoPolicy(),
+        policy=policy or DraftOnlyDemoPolicy(),
+        prepared_inputs=prepared_inputs,
+        require_all_ambiguities_resolved=prepared_inputs is not None,
     )
     if not run.analyses:
         raise ValueError(
@@ -559,7 +739,7 @@ def _inject_css(st: Any) -> None:
 
 def _run_payload_with_progress(
     st: Any, *, use_qwen: bool, payload_builder=None
-) -> dict[str, Any]:
+) -> Any:
     build = payload_builder or (lambda live: build_run_payload(use_qwen=live))
     if not use_qwen:
         with st.spinner("Reviewing IEP and service logs..."):
@@ -697,6 +877,10 @@ def render_app() -> None:
         st.sidebar.warning(
             "Do not upload identifiable student records to the public demo. "
             "Cloud vision rejects unredacted images.")
+        data_attested = st.sidebar.checkbox(
+            "I confirm these records are synthetic or already de-identified",
+            value=False,
+        )
     else:
         student_name = "A. Doe"
         school_name = "Maple Elementary"
@@ -706,6 +890,7 @@ def render_app() -> None:
         window_start = date(TODAY.year - 1, 9, 1)
         window_end = TODAY
         iep_input = ""
+        data_attested = True
         st.sidebar.markdown("**Case file**")
         st.sidebar.write("Student: A. Doe")
         st.sidebar.write("School: Maple Elementary")
@@ -739,8 +924,12 @@ def render_app() -> None:
 
     if "run_payload" not in st.session_state:
         st.session_state.run_payload = None
+    if "prepared_review" not in st.session_state:
+        st.session_state.prepared_review = None
     if "approval_reviewed" not in st.session_state:
         st.session_state.approval_reviewed = False
+    if "artifact_result" not in st.session_state:
+        st.session_state.artifact_result = None
 
     action_col, mode_col, proof_col = st.columns([1.2, 1.0, 2.3])
     with action_col:
@@ -758,42 +947,196 @@ def render_app() -> None:
             st.error("Add the redacted IEP services text and a service-log CSV first.")
         elif upload_mode and window_end < window_start:
             st.error("Window end must be on or after window start.")
+        elif upload_mode and not data_attested:
+            st.error(
+                "Confirm that the records are synthetic or already de-identified.")
         else:
-            def uploaded_builder(live: bool):
-                delimiter = (
-                    "\t" if csv_upload is not None
-                    and csv_upload.name.lower().endswith(".tsv") else None)
-                logs = load_logs_csv(
-                    uploaded_csv_text, "uploaded-service",
-                    delimiter=delimiter,
-                    source_uri="uploaded://service-log.csv",
-                )
-                if not logs:
-                    raise ValueError(
-                        "The uploaded log contains no parseable dated rows.")
-                return build_case_payload(
-                    iep_text=iep_input, logs=logs,
-                    window_start=window_start, window_end=window_end,
-                    instructional_periods=int(periods),
+            def review_builder(live: bool):
+                if upload_mode:
+                    delimiter = (
+                        "\t" if csv_upload is not None
+                        and csv_upload.name.lower().endswith(".tsv") else None)
+                    logs = load_logs_csv(
+                        uploaded_csv_text, "uploaded-service",
+                        delimiter=delimiter,
+                        source_uri="uploaded://service-log.csv",
+                    )
+                    if not logs:
+                        raise ValueError(
+                            "The uploaded log contains no parseable dated rows.")
+                    return prepare_case_review(
+                        iep_text=iep_input,
+                        logs=logs,
+                        window_start=window_start,
+                        window_end=window_end,
+                        instructional_periods=int(periods),
+                        context=LetterContext(
+                            student_name=student_name,
+                            school_name=school_name,
+                            district_name=district_name,
+                            state_agency_name=(
+                                f"{state} State Education Agency"
+                                if state else "State Education Agency"),
+                            state=state,
+                            letter_date=TODAY,
+                        ),
+                        use_qwen=live,
+                        state=state,
+                        include_systemic_demo=False,
+                    )
+                scenario = worked_example_speech(classified=False)
+                return prepare_case_review(
+                    iep_text=scenario.iep_text,
+                    logs=scenario.logs,
+                    window_start=scenario.window_start,
+                    window_end=scenario.window_end,
+                    instructional_periods=scenario.instructional_periods,
                     context=LetterContext(
-                        student_name=student_name, school_name=school_name,
-                        district_name=district_name,
-                        state_agency_name=(f"{state} State Education Agency"
-                                           if state else "State Education Agency"),
-                        state=state, letter_date=TODAY),
-                    use_qwen=live, state=state,
-                    include_systemic_demo=False,
+                        student_name="A. Doe",
+                        parent_name="J. Doe",
+                        school_name="Maple Elementary",
+                        district_name="Springfield SD",
+                        state_agency_name="State Education Agency",
+                        letter_date=TODAY,
+                    ),
+                    use_qwen=live,
+                    include_systemic_demo=True,
                 )
 
             st.session_state.approval_reviewed = False
+            st.session_state.artifact_result = None
+            st.session_state.run_payload = None
             try:
-                st.session_state.run_payload = _run_payload_with_progress(
+                st.session_state.prepared_review = _run_payload_with_progress(
                     st, use_qwen=run_qwen,
-                    payload_builder=uploaded_builder if upload_mode else None)
+                    payload_builder=review_builder)
             except (ValueError, RuntimeError) as exc:
                 st.error(str(exc))
 
     payload = st.session_state.run_payload
+    review = st.session_state.prepared_review
+    if review is not None and payload is None:
+        commitment = review.commitment
+        st.markdown("### Human checkpoint 1 — confirm Qwen's interpretation")
+        st.caption(
+            "Edit any field that does not match the source IEP. Deterministic "
+            "analysis remains blocked until this form is confirmed.")
+        with st.form("confirm-commitment-and-reasons"):
+            form_cols = st.columns(3)
+            with form_cols[0]:
+                service_type_value = st.selectbox(
+                    "Service type",
+                    options=[item.value for item in ServiceType],
+                    index=[item.value for item in ServiceType].index(
+                        commitment.service_type.value),
+                    format_func=lambda value: value.replace("_", " ").title(),
+                )
+                frequency_value = st.number_input(
+                    "Sessions per period", min_value=1, max_value=20,
+                    value=commitment.frequency_count)
+            with form_cols[1]:
+                period_value = st.selectbox(
+                    "Frequency period",
+                    options=[item.value for item in FrequencyPeriod],
+                    index=[item.value for item in FrequencyPeriod].index(
+                        commitment.frequency_period.value),
+                    format_func=str.title,
+                )
+                duration_value = st.number_input(
+                    "Minutes per session", min_value=1, max_value=480,
+                    value=commitment.duration_minutes)
+            with form_cols[2]:
+                setting_value = st.selectbox(
+                    "Setting",
+                    options=[item.value for item in DeliverySetting],
+                    index=[item.value for item in DeliverySetting].index(
+                        commitment.setting.value),
+                    format_func=str.title,
+                )
+                location_options = [""] + [
+                    item.value for item in ServiceLocation]
+                location_value = st.selectbox(
+                    "Location",
+                    options=location_options,
+                    index=(location_options.index(commitment.location.value)
+                           if commitment.location else 0),
+                    format_func=lambda value: (
+                        "Not specified" if not value
+                        else value.replace("_", " ").title()),
+                )
+                group_size_value = st.number_input(
+                    "Maximum group size (0 = unspecified)",
+                    min_value=0,
+                    max_value=50,
+                    value=commitment.group_size_max or 0,
+                )
+
+            ambiguity_rows = review.ambiguity_rows()
+            decisions: dict[str, str] = {}
+            if ambiguity_rows:
+                st.markdown("#### Human checkpoint 2 — resolve ambiguity")
+                st.caption(
+                    "Qwen/rules refused to guess. Review the source record and "
+                    "choose how each session should be treated.")
+                for row in ambiguity_rows:
+                    left, right = st.columns([2.2, 1])
+                    with left:
+                        st.markdown(
+                            f"**{html.escape(row['date'])} · "
+                            f"{html.escape(row['reason'])}**")
+                        st.caption(
+                            f"{row['method']} · confidence "
+                            f"{row['confidence']:.0%} · {row['rationale']}")
+                    with right:
+                        decisions[row["id"]] = st.selectbox(
+                            "Human decision",
+                            options=["", ExcusedClass.EXCUSED.value,
+                                     ExcusedClass.UNEXCUSED.value],
+                            key=f"ambiguity-{row['id']}",
+                            format_func=lambda value: {
+                                "": "Choose…",
+                                "excused": "Excused",
+                                "unexcused": "Unexcused",
+                            }[value],
+                        )
+            else:
+                st.success(
+                    "No ambiguous missed-session reasons require resolution.")
+
+            source_confirmed = st.checkbox(
+                "I compared these values and decisions with the source records")
+            confirm_review = st.form_submit_button(
+                "Confirm inputs and run deterministic analysis",
+                type="primary",
+                use_container_width=True,
+            )
+
+        if confirm_review:
+            if not source_confirmed:
+                st.error("Confirm that you reviewed the source records first.")
+                st.stop()
+            try:
+                with st.spinner(
+                    "Running deterministic ledger and grounding claims..."):
+                    st.session_state.run_payload = finalize_case_review(
+                        review,
+                        service_type=service_type_value,
+                        frequency_count=int(frequency_value),
+                        frequency_period=period_value,
+                        duration_minutes=int(duration_value),
+                        setting=setting_value,
+                        location=location_value,
+                        group_size_max=int(group_size_value),
+                        ambiguity_decisions=decisions,
+                    )
+                st.session_state.prepared_review = None
+                payload = st.session_state.run_payload
+            except (ValueError, RuntimeError) as exc:
+                st.error(str(exc))
+                st.stop()
+        else:
+            st.stop()
+
     if payload is None:
         st.markdown("### What happens when you start the review")
         cols = st.columns(4)
@@ -938,14 +1281,69 @@ def render_app() -> None:
                     ):
                         st.session_state.approval_reviewed = True
                     if st.session_state.approval_reviewed:
-                        st.success("Draft reviewed locally. No external send occurred.")
+                        st.success(
+                            "Draft review recorded. External storage is now "
+                            "eligible for a separate explicit approval.")
                     else:
                         st.warning("Outbound action remains blocked.")
                 elif checkpoint["resolved"]:
-                    st.success("Resolved by demo policy.")
+                    st.success("Resolved and recorded in the audit trail.")
                 else:
                     st.warning("Awaiting human decision.")
-        st.caption("The demo never sends externally; it only shows the approval gate.")
+
+        if st.session_state.approval_reviewed and payload["draft"]["packet"]:
+            st.divider()
+            st.markdown("### Approval-gated Alibaba Cloud action")
+            st.caption(
+                "This stores the exact reviewed packet; it does not email or file "
+                "the draft. Function Compute re-checks authentication and approval.")
+            artifact_result = st.session_state.artifact_result
+            if artifact_result is None:
+                if FunctionComputeArtifactClient.is_configured():
+                    store_approved = st.button(
+                        "Approve and store packet in Alibaba OSS",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    if store_approved:
+                        try:
+                            with st.spinner(
+                                "Calling Function Compute and storing the approved packet..."):
+                                result = (
+                                    FunctionComputeArtifactClient.from_env()
+                                    .store_approved_packet(
+                                        payload["draft"]["packet"],
+                                        case_id=payload["run_id"],
+                                    )
+                                )
+                            st.session_state.artifact_result = result
+                            payload["audit"].extend(result.audit)
+                            artifact_result = result
+                        except (ValueError, RuntimeError) as exc:
+                            st.error(str(exc))
+                else:
+                    st.info(
+                        "Cloud storage is not configured on this app host. Set "
+                        "DUE_PROCESS_FUNCTION_URL and DUE_PROCESS_API_TOKEN after "
+                        "deploying Function Compute.")
+            if artifact_result is not None:
+                receipt = artifact_result.receipt
+                st.success("Approved evidence packet stored in Alibaba OSS.")
+                receipt_cols = st.columns(3)
+                receipt_cols[0].metric(
+                    "Provider", str(receipt.get("provider", "alibaba-oss")))
+                receipt_cols[1].metric(
+                    "Packet size", f"{int(receipt.get('size_bytes', 0)):,} bytes")
+                receipt_cols[2].metric(
+                    "Request ID", artifact_result.request_id or "returned")
+                st.code(str(receipt.get("uri", "")))
+                st.caption(
+                    f"SHA-256: {receipt.get('sha256', '')} · "
+                    f"Stored: {receipt.get('stored_at', '')}")
+
+        st.caption(
+            "No email or filing action is automated; only the separately "
+            "approved evidence-storage action is available.")
 
     with tabs[3]:
         st.markdown("### District-wide pattern")
