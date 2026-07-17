@@ -11,8 +11,10 @@ flowchart LR
     R --> Q["Qwen Cloud: extract / classify / draft"]
     Q --> P["Actual-call provenance + fallback reasons"]
     R --> F["Rule fallback"]
-    Q --> D["Deterministic ledger / review policy / deadlines"]
-    F --> D
+    Q --> C1["Human edits + confirms commitment"]
+    F --> C1
+    C1 --> C2["Human resolves ambiguous reasons"]
+    C2 --> D["Deterministic ledger / review policy / deadlines"]
     D --> G["Evidence-ID and corpus publication gate"]
     G --> H["Human review checkpoint"]
     H -->|"explicit approval"| FC["Alibaba Function Compute"]
@@ -45,7 +47,7 @@ sequenceDiagram
     C->>F: custom case + Bearer token
     F->>F: validate size, rows, dates, ranges
     F->>Q: redacted text tasks
-    C->>F: explicit storage approval
+    C->>F: exact reviewed packet + Bearer token + explicit approval
     F->>O: content-addressed evidence packet
     O-->>F: storage result
     F-->>C: oss:// URI + SHA-256 + audit entry

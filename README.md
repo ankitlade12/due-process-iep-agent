@@ -120,9 +120,9 @@ python -m due_process.examples.vision_demo
 # 5) Stable evaluation — grounded system vs offline heuristic baseline:
 python -m due_process.evaluation.run_eval --offline
 
-# 6) Live advocate case desk generated from the real backend workflow.
-# In the app, use "Run live Qwen review" for the Qwen Cloud demo path.
-# Use "Fast local preview" only for rehearsal when you do not want cloud latency.
+# 6) Live advocate case desk: Qwen/rules prepare inputs, a human edits and
+# confirms them, deterministic analysis runs, then an approved packet can be
+# stored through Function Compute with a verifiable OSS receipt.
 streamlit run src/due_process/examples/case_desk.py
 
 # Test suite (all offline):

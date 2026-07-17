@@ -1,8 +1,16 @@
 """Tests for the Streamlit case desk backend payload."""
 
-from due_process.examples.case_desk import build_case_payload, build_run_payload
+import pytest
+
+from due_process.examples.case_desk import (
+    build_case_payload,
+    build_run_payload,
+    finalize_case_review,
+    prepare_case_review,
+)
 from due_process.instruments.drafter import LetterContext
 from due_process.scenarios import compliant_speech
+from due_process.scenarios import worked_example_speech
 
 
 
@@ -44,3 +52,68 @@ def test_case_desk_handles_uploaded_compliant_case_without_false_claim():
     assert payload["ledger"]["unexcused_minutes"] == 0
     assert payload["systemic"] is None
     assert payload["claims"][0]["title"] == "No actionable violation generated"
+
+
+def test_case_desk_requires_all_ambiguities_before_final_analysis():
+    scenario = worked_example_speech(classified=False)
+    ambiguous = next(log for log in scenario.logs if log.status.value == "missed")
+    ambiguous.missed_reason_text = "See provider note"
+    review = prepare_case_review(
+        iep_text=scenario.iep_text,
+        logs=scenario.logs,
+        window_start=scenario.window_start,
+        window_end=scenario.window_end,
+        instructional_periods=scenario.instructional_periods,
+        context=LetterContext(student_name="Student A"),
+        use_qwen=False,
+    )
+    commitment = review.commitment
+
+    with pytest.raises(ValueError, match="Resolve every ambiguous"):
+        finalize_case_review(
+            review,
+            service_type=commitment.service_type.value,
+            frequency_count=commitment.frequency_count,
+            frequency_period=commitment.frequency_period.value,
+            duration_minutes=commitment.duration_minutes,
+            setting=commitment.setting.value,
+        )
+
+    payload = finalize_case_review(
+        review,
+        service_type=commitment.service_type.value,
+        frequency_count=commitment.frequency_count,
+        frequency_period=commitment.frequency_period.value,
+        duration_minutes=commitment.duration_minutes,
+        setting=commitment.setting.value,
+        ambiguity_decisions={ambiguous.id: "unexcused"},
+    )
+    assert payload["ledger"]["unexcused_minutes"] == 720
+    checkpoints = {item["kind"]: item for item in payload["checkpoints"]}
+    assert checkpoints["confirm_commitments"]["resolved"] is True
+    assert checkpoints["review_ambiguous"]["resolved"] is True
+
+
+def test_case_desk_uses_human_edited_commitment_values():
+    scenario = compliant_speech()
+    review = prepare_case_review(
+        iep_text=(
+            "Speech-Language Therapy: 3 x 30 minutes per week, individual."),
+        logs=scenario.logs,
+        window_start=scenario.window_start,
+        window_end=scenario.window_end,
+        instructional_periods=scenario.instructional_periods,
+        context=LetterContext(student_name="Student A"),
+        use_qwen=False,
+    )
+    commitment = review.commitment
+    payload = finalize_case_review(
+        review,
+        service_type=commitment.service_type.value,
+        frequency_count=2,
+        frequency_period=commitment.frequency_period.value,
+        duration_minutes=20,
+        setting=commitment.setting.value,
+    )
+    assert payload["ledger"]["required_sessions"] == 72
+    assert payload["ledger"]["required_minutes"] == 1440

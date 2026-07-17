@@ -25,6 +25,7 @@ from due_process.scenarios import worked_example_speech
 MAX_EVENT_BYTES = 1_000_000
 MAX_IEP_CHARS = 100_000
 MAX_LOG_ROWS = 2_000
+MAX_PACKET_BYTES = 1_000_000
 
 
 class DraftOnlyPolicy(ApprovalPolicy):
@@ -216,11 +217,45 @@ def _serialize(run, client, trace_start: int, request_id: str) -> dict:
     }
 
 
+def _store_approved_packet(payload: dict, headers: dict, request_id: str) -> dict:
+    """Execute only the exact packet action a human approved in the UI."""
+    _require_custom_auth(headers)
+    approval = payload.get("approval") or {}
+    if approval.get("store_evidence_packet") is not True:
+        raise PermissionError(
+            "Explicit store_evidence_packet approval is required.")
+    packet = payload.get("evidence_packet")
+    if not isinstance(packet, str) or not packet.strip():
+        raise ValueError("evidence_packet must be non-empty text.")
+    if len(packet.encode("utf-8")) > MAX_PACKET_BYTES:
+        raise ValueError(
+            f"evidence_packet may not exceed {MAX_PACKET_BYTES} bytes.")
+    case_id = str(payload.get("case_id", request_id))[:120]
+    receipt = OSSArtifactStore.from_env().put_evidence_packet(
+        packet, case_id=case_id)
+    audit = [
+        "[approval] Authenticated human approval accepted for packet storage.",
+        f"[external_tool] Approved packet stored at {receipt.uri} "
+        f"sha256={receipt.sha256}.",
+    ]
+    return {
+        "ok": True,
+        "request_id": request_id,
+        "action": "store_evidence_packet",
+        "artifact_receipt": receipt.to_dict(),
+        "audit": audit,
+        "needs_human": False,
+    }
+
+
 def handler(event, context):
     """Function Compute entrypoint; always returns a JSON string."""
     request_id = str(getattr(context, "request_id", "") or uuid.uuid4())
     try:
         payload, headers = _parse_event(event)
+        if payload.get("action") == "store_evidence_packet":
+            return json.dumps(
+                _store_approved_packet(payload, headers, request_id))
         custom_case = bool(payload.get("logs") or payload.get("iep_text"))
         if custom_case:
             _require_custom_auth(headers)
