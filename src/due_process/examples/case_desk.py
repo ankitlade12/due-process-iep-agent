@@ -10,7 +10,7 @@ grounding, draft generation, human checkpoints, and systemic aggregation.
 
 from __future__ import annotations
 
-import json
+import html
 import queue
 import threading
 import time
@@ -19,14 +19,15 @@ from typing import Any
 
 from due_process.agent import ApprovalPolicy, run_enforcement
 from due_process.analysis import analyze_commitment
+from due_process.filing import export_evidence_packet
+from due_process.ingest import load_logs_csv
 from due_process.instruments.drafter import LetterContext, draft_systemic_complaint
 from due_process.llm.client import default_client
 from due_process.models import LogStatus
 from due_process.scenarios import district_caseload, worked_example_speech
 from due_process.systemic import StudentCase, aggregate_systemic
 
-TODAY = date(2026, 6, 30)
-NOW = datetime(2026, 6, 30, 9, 0, 0)
+TODAY = date.today()
 
 
 class DraftOnlyDemoPolicy(ApprovalPolicy):
@@ -53,103 +54,187 @@ def _method_counts(items: dict[str, Any]) -> dict[str, int]:
     return counts
 
 
-def build_run_payload(*, use_qwen: bool = True) -> dict[str, Any]:
-    """Execute the real demo workflow and return a JSON-safe payload."""
-    started = time.perf_counter()
-    scenario = worked_example_speech(classified=False)
-    client = default_client() if use_qwen else None
-    qwen_available = client is not None and client.available
-    context = LetterContext(
-        student_name="A. Doe",
-        parent_name="J. Doe",
-        school_name="Maple Elementary",
-        district_name="Springfield SD",
-        state_agency_name="State Education Agency",
-        letter_date=TODAY,
-    )
-
-    run = run_enforcement(
-        scenario.logs,
-        now=NOW,
-        context=context,
-        window_start=scenario.window_start,
-        window_end=scenario.window_end,
-        iep_text=scenario.iep_text,
-        instructional_periods=scenario.instructional_periods,
-        discovery_date=scenario.discovery_date,
-        client=client,
-        policy=DraftOnlyDemoPolicy(),
-    )
-    analysis = run.analyses[0]
-    ledger = analysis.ledger
-    deadline = analysis.deadlines[0]
-    due_process_deadline = analysis.due_process_deadlines[0]
-    draft = run.instruments[0]
-    bundle = analysis.bundles[0]
-
+def _systemic_payload() -> dict[str, Any]:
+    """Build the synthetic, privacy-gated cohort used only in the demo tab."""
     district, students, ws, we, periods = district_caseload()
     district_cases: list[StudentCase] = []
     for sid, commitment, logs in students:
         district_analysis = analyze_commitment(
-            commitment,
-            logs,
-            window_start=ws,
-            window_end=we,
-            today=TODAY,
+            commitment, logs, window_start=ws, window_end=we, today=TODAY,
             instructional_periods=periods,
         )
-        district_cases.append(
-            StudentCase(student_id=sid, district=district, analyses=[district_analysis])
-        )
-    findings = aggregate_systemic(district_cases)
-    finding = findings[0]
+        district_cases.append(StudentCase(
+            student_id=sid, district=district, analyses=[district_analysis]))
+    finding = aggregate_systemic(district_cases)[0]
     systemic_draft = draft_systemic_complaint(
-        findings,
-        LetterContext(
-            parent_name="Parent Coalition",
-            district_name=district,
-            state_agency_name="State Education Agency",
-            letter_date=TODAY,
-        ),
+        [finding],
+        LetterContext(parent_name="Parent Coalition", district_name=district,
+                      state_agency_name="State Education Agency",
+                      letter_date=TODAY),
     )
+    return {
+        "district": finding.district,
+        "service": finding.service_type.value.replace("_", " ").title(),
+        "students_with_service": finding.n_students_with_service,
+        "students_material": finding.n_students_material,
+        "share_material": _pct(finding.material_student_share),
+        "aggregate_gap": finding.total_unexcused_minutes,
+        "aggregate_gap_label": _minutes(finding.total_unexcused_minutes),
+        "k_threshold": finding.k_threshold,
+        "draft_preview": systemic_draft.draft_text,
+        "synthetic": True,
+    }
+
+
+def build_case_payload(
+    *,
+    iep_text: str,
+    logs: list,
+    window_start: date,
+    window_end: date,
+    instructional_periods: int,
+    context: LetterContext,
+    use_qwen: bool = True,
+    state: str = "",
+    include_systemic_demo: bool = False,
+) -> dict[str, Any]:
+    """Run one real input bundle and return the UI's JSON-safe view model."""
+    started = time.perf_counter()
+    client = default_client() if use_qwen else None
+    trace_start = len(client.traces) if client is not None else 0
+
+    run = run_enforcement(
+        logs,
+        now=datetime.now(),
+        context=context,
+        window_start=window_start,
+        window_end=window_end,
+        iep_text=iep_text,
+        instructional_periods=instructional_periods,
+        discovery_date=window_end,
+        state=state,
+        client=client,
+        policy=DraftOnlyDemoPolicy(),
+    )
+    if not run.analyses:
+        raise ValueError(
+            "No reviewable service commitment was extracted. Include a service, "
+            "frequency, and duration in the IEP text."
+        )
+    analysis = run.analyses[0]
+    ledger = analysis.ledger
+    deadline = analysis.deadlines[0] if analysis.deadlines else None
+    due_process_deadline = (
+        analysis.due_process_deadlines[0]
+        if analysis.due_process_deadlines else None)
+    draft = run.instruments[0] if run.instruments else None
+    bundle = analysis.bundles[0] if analysis.bundles else None
 
     comp_minutes = analysis.compensatory.estimated_minutes if analysis.compensatory else 0
     class_counts = _method_counts(run.classification.classifications if run.classification else {})
     extracted_method = run.extracted[0].method if run.extracted else "none"
-    missed_count = sum(1 for log in scenario.logs if log.status == LogStatus.MISSED)
+    extraction_fallback = (run.extracted[0].fallback_reason
+                           if run.extracted else "")
+    classification_fallbacks = sorted({
+        item.fallback_reason
+        for item in (run.classification.classifications.values()
+                     if run.classification else [])
+        if item.fallback_reason
+    })
+    missed_count = sum(1 for log in logs if log.status == LogStatus.MISSED)
     duration_ms = int((time.perf_counter() - started) * 1000)
+    traces = client.traces[trace_start:] if client is not None else []
+    trace_rows = [
+        {
+            "model": trace.model,
+            "operation": trace.operation,
+            "succeeded": trace.succeeded,
+            "duration_ms": trace.duration_ms,
+            "request_id": trace.request_id,
+            "error_type": trace.error_type,
+        }
+        for trace in traces
+    ]
+    qwen_outputs = (
+        extracted_method == "qwen" or class_counts.get("qwen", 0) > 0)
+    qwen_succeeded = any(trace.succeeded for trace in traces)
+    if qwen_outputs and qwen_succeeded:
+        mode = "qwen-online"
+    elif use_qwen and traces:
+        mode = "mixed-fallback"
+    else:
+        mode = "offline-fallback"
+
+    claims: list[dict[str, Any]] = []
+    if bundle is not None:
+        claims.append({
+            "title": "Implementation review signal",
+            "finding": (
+                f"{_minutes(ledger.unexcused_shortfall_minutes)} unexcused "
+                f"shortfall ({_pct(ledger.shortfall_pct)})."),
+            "iep": bundle.iep_refs[0].cite() if bundle.iep_refs else "services line",
+            "logs": [ref.cite() for ref in bundle.log_refs[:10]],
+            "law": [p.short_label for p in bundle.legal_provisions],
+        })
+    else:
+        claims.append({
+            "title": "No actionable violation generated",
+            "finding": analysis.materiality.reasons[0],
+            "iep": (analysis.commitment.source_ref.cite()
+                    if analysis.commitment.source_ref else "services line"),
+            "logs": [f"{len(logs)} service-log rows reviewed"],
+            "law": [],
+        })
+    if draft is not None:
+        claims.append({
+            "title": "Draft remedy gated by a human",
+            "finding": f"{_minutes(comp_minutes)} compensatory estimate; draft ready.",
+            "iep": "Human approval required before any external action.",
+            "logs": ([f"State complaint event deadline: {deadline.sol_expiry_date.isoformat()}"]
+                     if deadline else ["Complete service logs requested first"]),
+            "law": draft.citations,
+        })
+
+    packet_text = (
+        export_evidence_packet(draft, run.analyses, state=state)
+        if draft is not None else "")
+    material_label = "review signal found" if analysis.materiality.is_material else "no review signal"
 
     return {
         "run_id": f"demo-{int(time.time())}",
         "status": "needs_human_approval" if run.needs_human else "complete",
-        "mode": "qwen-online" if qwen_available else "offline-fallback",
+        "mode": mode,
         "duration_ms": duration_ms,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "case": {
-            "student": "A. Doe",
-            "school": "Maple Elementary",
-            "district": "Springfield SD",
+            "student": context.student_name,
+            "school": context.school_name,
+            "district": context.district_name,
             "service": analysis.commitment.service_type.value.replace("_", " ").title(),
             "window": f"{ledger.window_start.isoformat()} to {ledger.window_end.isoformat()}",
-            "iep_text": scenario.iep_text.strip(),
-            "logs": len(scenario.logs),
+            "iep_text": iep_text.strip(),
+            "logs": len(logs),
             "missed_logs": missed_count,
         },
         "agent_steps": [
             {
                 "label": "Read IEP",
-                "owner": "Qwen" if qwen_available else "rules",
-                "detail": f"{len(run.extracted)} commitment extracted by {extracted_method}.",
+                "owner": "Qwen" if extracted_method == "qwen" else "rules",
+                "detail": (f"{len(run.extracted)} commitment extracted by "
+                           f"{extracted_method}."
+                           + (f" Fallback: {extraction_fallback}."
+                              if extraction_fallback else "")),
             },
             {
                 "label": "Classify logs",
-                "owner": "Qwen" if qwen_available else "rules",
-                "detail": f"{len(run.classification.classifications)} missed/short reasons classified.",
+                "owner": "Qwen" if class_counts.get("qwen", 0) else "rules",
+                "detail": (f"{len(run.classification.classifications)} missed/short "
+                           f"reasons classified: {class_counts}."),
             },
             {
                 "label": "Run ledger",
                 "owner": "deterministic",
-                "detail": f"{ledger.required_sessions} required sessions reconciled against {len(scenario.logs)} logs.",
+                "detail": f"{ledger.required_sessions} required sessions reconciled against {len(logs)} logs.",
             },
             {
                 "label": "Apply materiality",
@@ -159,12 +244,16 @@ def build_run_payload(*, use_qwen: bool = True) -> dict[str, Any]:
             {
                 "label": "Ground claims",
                 "owner": "deterministic",
-                "detail": f"{len(bundle.log_refs)} log refs, {len(bundle.iep_refs)} IEP refs, {len(bundle.legal_provisions)} legal refs.",
+                "detail": (f"{len(bundle.log_refs)} log refs, {len(bundle.iep_refs)} "
+                           f"IEP refs, {len(bundle.legal_provisions)} legal refs."
+                           if bundle else "No allegation was published."),
             },
             {
                 "label": "Draft remedy",
                 "owner": "agent",
-                "detail": "State complaint drafted and held for human approval.",
+                "detail": (f"{draft.type.value.replace('_', ' ').title()} drafted "
+                           "and held for human approval."
+                           if draft else "No outbound document was needed."),
             },
         ],
         "ledger": {
@@ -181,36 +270,28 @@ def build_run_payload(*, use_qwen: bool = True) -> dict[str, Any]:
             "comp_hours": f"{comp_minutes / 60:.1f}",
         },
         "qwen": {
-            "available": qwen_available,
+            "configured": bool(client and client.available),
+            "used_for_output": qwen_outputs,
             "extraction_method": extracted_method,
+            "extraction_fallback": extraction_fallback,
             "classification_methods": class_counts,
+            "classification_fallbacks": classification_fallbacks,
             "orchestrator_model": client.config.orchestrator_model if client else "none",
             "workhorse_model": client.config.workhorse_model if client else "none",
+            "traces": trace_rows,
         },
         "deterministic": {
             "material": analysis.materiality.is_material,
             "materiality_reason": analysis.materiality.reasons[0],
-            "state_deadline": deadline.sol_expiry_date.isoformat(),
-            "state_days_remaining": deadline.days_remaining,
-            "due_process_deadline": due_process_deadline.sol_expiry_date.isoformat(),
-            "due_process_days_remaining": due_process_deadline.days_remaining,
+            "state_deadline": deadline.sol_expiry_date.isoformat() if deadline else "n/a",
+            "state_days_remaining": deadline.days_remaining if deadline else None,
+            "due_process_deadline": (due_process_deadline.sol_expiry_date.isoformat()
+                                     if due_process_deadline else "n/a"),
+            "due_process_days_remaining": (due_process_deadline.days_remaining
+                                            if due_process_deadline else None),
+            "label": material_label,
         },
-        "claims": [
-            {
-                "title": "Material implementation failure",
-                "finding": f"{_minutes(ledger.unexcused_shortfall_minutes)} unexcused shortfall ({_pct(ledger.shortfall_pct)}).",
-                "iep": bundle.iep_refs[0].cite() if bundle.iep_refs else "services line",
-                "logs": [ref.cite() for ref in bundle.log_refs[:10]],
-                "law": [p.short_label for p in bundle.legal_provisions],
-            },
-            {
-                "title": "Draft remedy gated by a human",
-                "finding": f"{_minutes(comp_minutes)} compensatory estimate; state complaint ready.",
-                "iep": "Human approval required before send.",
-                "logs": [f"State complaint deadline: {deadline.sol_expiry_date.isoformat()}"],
-                "law": draft.citations,
-            },
-        ],
+        "claims": claims,
         "checkpoints": [
             {
                 "kind": cp.kind,
@@ -220,25 +301,34 @@ def build_run_payload(*, use_qwen: bool = True) -> dict[str, Any]:
             }
             for cp in run.checkpoints
         ],
-        "systemic": {
-            "district": finding.district,
-            "service": finding.service_type.value.replace("_", " ").title(),
-            "students_with_service": finding.n_students_with_service,
-            "students_material": finding.n_students_material,
-            "share_material": _pct(finding.material_student_share),
-            "aggregate_gap": finding.total_unexcused_minutes,
-            "aggregate_gap_label": _minutes(finding.total_unexcused_minutes),
-            "k_threshold": finding.k_threshold,
-            "draft_preview": systemic_draft.draft_text,
-        },
+        "systemic": _systemic_payload() if include_systemic_demo else None,
         "audit": run.audit_lines(),
         "draft": {
-            "type": draft.type.value,
-            "status": draft.status.value,
-            "citations": draft.citations,
-            "text": draft.draft_text,
+            "type": draft.type.value if draft else "none",
+            "status": draft.status.value if draft else "not_needed",
+            "citations": draft.citations if draft else [],
+            "text": draft.draft_text if draft else "No draft was generated.",
+            "packet": packet_text,
         },
     }
+
+
+def build_run_payload(*, use_qwen: bool = True) -> dict[str, Any]:
+    """Execute the polished synthetic demo through the same real input path."""
+    scenario = worked_example_speech(classified=False)
+    return build_case_payload(
+        iep_text=scenario.iep_text,
+        logs=scenario.logs,
+        window_start=scenario.window_start,
+        window_end=scenario.window_end,
+        instructional_periods=scenario.instructional_periods,
+        context=LetterContext(
+            student_name="A. Doe", parent_name="J. Doe",
+            school_name="Maple Elementary", district_name="Springfield SD",
+            state_agency_name="State Education Agency", letter_date=TODAY),
+        use_qwen=use_qwen,
+        include_systemic_demo=True,
+    )
 
 
 def _inject_css(st: Any) -> None:
@@ -467,16 +557,19 @@ def _inject_css(st: Any) -> None:
     )
 
 
-def _run_payload_with_progress(st: Any, *, use_qwen: bool) -> dict[str, Any]:
+def _run_payload_with_progress(
+    st: Any, *, use_qwen: bool, payload_builder=None
+) -> dict[str, Any]:
+    build = payload_builder or (lambda live: build_run_payload(use_qwen=live))
     if not use_qwen:
         with st.spinner("Reviewing IEP and service logs..."):
-            return build_run_payload(use_qwen=False)
+            return build(False)
 
     result_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
 
     def worker() -> None:
         try:
-            result_queue.put(("ok", build_run_payload(use_qwen=True)))
+            result_queue.put(("ok", build(True)))
         except Exception as exc:  # noqa: BLE001 - surfaced in UI
             result_queue.put(("error", exc))
 
@@ -500,7 +593,8 @@ def _run_payload_with_progress(st: Any, *, use_qwen: bool) -> dict[str, Any]:
         progress.progress(min(92, 12 + index * 13), text=messages[index % len(messages)])
         detail.markdown(
             f'<div class="qwen-progress"><b>Live Qwen review is running.</b><br>'
-            f'Elapsed: {elapsed}s. Qwen is handling the language-heavy extraction and classification while the deterministic ledger stays local.</div>',
+            f'Elapsed: {elapsed}s. The app is attempting Qwen for language tasks; '
+            'the completed run will disclose successful calls and any fallback.</div>',
             unsafe_allow_html=True,
         )
         index += 1
@@ -515,12 +609,15 @@ def _run_payload_with_progress(st: Any, *, use_qwen: bool) -> dict[str, Any]:
 
 
 def _render_step(st: Any, step: dict[str, str]) -> None:
+    owner = html.escape(str(step["owner"]))
+    label = html.escape(str(step["label"]))
+    detail = html.escape(str(step["detail"]))
     st.markdown(
         f"""
         <div class="run-card">
-          <span>{step["owner"]}</span>
-          <strong>{step["label"]}</strong>
-          <div>{step["detail"]}</div>
+          <span>{owner}</span>
+          <strong>{label}</strong>
+          <div>{detail}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -528,14 +625,20 @@ def _render_step(st: Any, step: dict[str, str]) -> None:
 
 
 def _render_claim(st: Any, claim: dict[str, Any]) -> None:
-    law = "".join(f'<span class="source-pill">{item}</span>' for item in claim["law"][:5])
-    logs = "".join(f"<li>{item}</li>" for item in claim["logs"][:5])
+    law = "".join(
+        f'<span class="source-pill">{html.escape(str(item))}</span>'
+        for item in claim["law"][:5])
+    logs = "".join(
+        f"<li>{html.escape(str(item))}</li>" for item in claim["logs"][:5])
+    title = html.escape(str(claim["title"]))
+    finding = html.escape(str(claim["finding"]))
+    iep = html.escape(str(claim["iep"]))
     st.markdown(
         f"""
         <div class="claim-card">
-          <h3>{claim["title"]}</h3>
-          <strong>{claim["finding"]}</strong>
-          <div><b>IEP</b>: {claim["iep"]}</div>
+          <h3>{title}</h3>
+          <strong>{finding}</strong>
+          <div><b>IEP</b>: {iep}</div>
           <div style="margin-top:8px;"><b>Log evidence</b><ul>{logs}</ul></div>
           <div style="margin-top:8px;">{law}</div>
         </div>
@@ -557,25 +660,77 @@ def render_app() -> None:
 
     st.sidebar.title("Due Process")
     st.sidebar.caption("IEP service-delivery review")
-    st.sidebar.markdown("**Case file**")
-    st.sidebar.write("Student: A. Doe")
-    st.sidebar.write("School: Maple Elementary")
-    st.sidebar.write("District: Springfield SD")
+    data_source = st.sidebar.radio(
+        "Case source", ["Synthetic worked example", "Upload redacted case"],
+        help="Use only synthetic or already-redacted records in this public demo.")
+    upload_mode = data_source == "Upload redacted case"
+
+    uploaded_csv_text = ""
+    csv_upload = None
+    if upload_mode:
+        st.sidebar.markdown("**Redacted case details**")
+        student_name = st.sidebar.text_input("Student label", "Student A")
+        school_name = st.sidebar.text_input("School label", "Example School")
+        district_name = st.sidebar.text_input("District label", "Example District")
+        state = st.sidebar.text_input("State code", "", max_chars=2).upper()
+        periods = st.sidebar.number_input(
+            "Instructional periods", min_value=1, max_value=60, value=36)
+        window_start = st.sidebar.date_input(
+            "Window start", date(TODAY.year - 1, 9, 1))
+        window_end = st.sidebar.date_input("Window end", TODAY)
+        iep_input = st.sidebar.text_area(
+            "IEP services text",
+            "Speech-Language Therapy: 3 x 30 minutes per week, individual, pull-out.",
+            height=110,
+        )
+        csv_upload = st.sidebar.file_uploader(
+            "Service log CSV", type=["csv", "tsv"])
+        if csv_upload is not None:
+            try:
+                uploaded_csv_text = csv_upload.getvalue().decode("utf-8-sig")
+            except UnicodeDecodeError:
+                st.sidebar.error("The service log must be UTF-8 CSV/TSV text.")
+        with st.sidebar.expander("Expected CSV columns"):
+            st.code(
+                "Date,Minutes,Status,Reason,Provider\n"
+                "2026-01-08,0,Missed,Provider absent no substitute,")
+        st.sidebar.warning(
+            "Do not upload identifiable student records to the public demo. "
+            "Cloud vision rejects unredacted images.")
+    else:
+        student_name = "A. Doe"
+        school_name = "Maple Elementary"
+        district_name = "Springfield SD"
+        state = ""
+        periods = 36
+        window_start = date(TODAY.year - 1, 9, 1)
+        window_end = TODAY
+        iep_input = ""
+        st.sidebar.markdown("**Case file**")
+        st.sidebar.write("Student: A. Doe")
+        st.sidebar.write("School: Maple Elementary")
+        st.sidebar.write("District: Springfield SD")
     st.sidebar.divider()
     st.sidebar.markdown("**Guardrails**")
     st.sidebar.write("No legal advice.")
     st.sidebar.write("No outbound send without human approval.")
     st.sidebar.write("Every finding is tied to source records.")
 
+    hero_promise = (
+        html.escape(iep_input.strip()[:100]) if upload_mode
+        else "Speech-language therapy · 3x/week · 30 minutes")
+    hero_records = (
+        html.escape(csv_upload.name) if upload_mode and csv_upload is not None
+        else ("Awaiting redacted CSV" if upload_mode else "108 synthetic log rows"))
     st.markdown(
-        """
+        f"""
         <div class="hero">
           <h1>IEP Service Delivery Review</h1>
-          <p>Check whether the school delivered the services written into the IEP, what is owed if it did not, and what evidence supports the next step.</p>
+          <p>Reconcile what the IEP describes with delivery records, then prepare an evidence-backed packet for human review.</p>
           <div class="case-file">
-            <div class="file-card"><span>IEP promise</span><strong>Speech-language therapy</strong><p>3x per week, 30 minutes, individual pull-out.</p></div>
-            <div class="file-card"><span>Records received</span><strong>108 service log rows</strong><p>Delivered, excused, and missed sessions are reviewed.</p></div>
-            <div class="file-card"><span>Safe next step</span><strong>Draft only</strong><p>The agent can draft a complaint, but a human must approve it.</p></div>
+            <div class="file-card"><span>IEP service text</span><strong>{hero_promise}</strong><p>Qwen or rules extract a structured commitment.</p></div>
+            <div class="file-card"><span>Records</span><strong>{hero_records}</strong><p>Delivered, excused, and missed sessions are reconciled.</p></div>
+            <div class="file-card"><span>Safe next step</span><strong>Human-review draft</strong><p>No external action occurs without explicit approval.</p></div>
           </div>
         </div>
         """,
@@ -599,8 +754,44 @@ def render_app() -> None:
         )
 
     if run_qwen or run_preview:
-        st.session_state.approval_reviewed = False
-        st.session_state.run_payload = _run_payload_with_progress(st, use_qwen=run_qwen)
+        if upload_mode and (not iep_input.strip() or not uploaded_csv_text.strip()):
+            st.error("Add the redacted IEP services text and a service-log CSV first.")
+        elif upload_mode and window_end < window_start:
+            st.error("Window end must be on or after window start.")
+        else:
+            def uploaded_builder(live: bool):
+                delimiter = (
+                    "\t" if csv_upload is not None
+                    and csv_upload.name.lower().endswith(".tsv") else None)
+                logs = load_logs_csv(
+                    uploaded_csv_text, "uploaded-service",
+                    delimiter=delimiter,
+                    source_uri="uploaded://service-log.csv",
+                )
+                if not logs:
+                    raise ValueError(
+                        "The uploaded log contains no parseable dated rows.")
+                return build_case_payload(
+                    iep_text=iep_input, logs=logs,
+                    window_start=window_start, window_end=window_end,
+                    instructional_periods=int(periods),
+                    context=LetterContext(
+                        student_name=student_name, school_name=school_name,
+                        district_name=district_name,
+                        state_agency_name=(f"{state} State Education Agency"
+                                           if state else "State Education Agency"),
+                        state=state, letter_date=TODAY),
+                    use_qwen=live, state=state,
+                    include_systemic_demo=False,
+                )
+
+            st.session_state.approval_reviewed = False
+            try:
+                st.session_state.run_payload = _run_payload_with_progress(
+                    st, use_qwen=run_qwen,
+                    payload_builder=uploaded_builder if upload_mode else None)
+            except (ValueError, RuntimeError) as exc:
+                st.error(str(exc))
 
     payload = st.session_state.run_payload
     if payload is None:
@@ -623,12 +814,31 @@ def render_app() -> None:
     case = payload["case"]
     ledger = payload["ledger"]
     det = payload["deterministic"]
-    mode_label = "Qwen Cloud review" if payload["mode"] == "qwen-online" else "local deterministic preview"
+    mode_label = {
+        "qwen-online": "verified Qwen Cloud outputs",
+        "mixed-fallback": "Qwen attempted with an explicit local fallback",
+        "offline-fallback": "local deterministic preview",
+    }[payload["mode"]]
+    student_label = html.escape(str(case["student"]))
+    if det["material"]:
+        bottom_heading = "Review signal: a substantial service gap needs human review"
+        bottom_detail = (
+            f'{student_label} was promised {ledger["required_sessions"]} sessions. '
+            f'The records show {ledger["delivered_sessions"]} delivered and '
+            f'{ledger["unexcused_minutes"]:,} unexcused minutes '
+            f'({ledger["shortfall_pct"]}). The product threshold is a screening '
+            "signal, not a legal finding.")
+    else:
+        bottom_heading = "No actionable implementation signal was generated"
+        bottom_detail = (
+            f'{student_label}: {ledger["delivered_sessions"]} delivered sessions '
+            f'and {ledger["unexcused_minutes"]:,} unexcused minutes. Keep monitoring '
+            "and have a human review incomplete or ambiguous records.")
     st.markdown(
         f"""
         <div class="bottom-line">
-          <h2>Bottom line: material service gap found</h2>
-          <p>{case["student"]} was promised {ledger["required_sessions"]} sessions. The logs show {ledger["delivered_sessions"]} delivered, leaving {ledger["unexcused_minutes"]:,} unexcused minutes ({ledger["shortfall_pct"]}) and an estimated {ledger["comp_hours"]} hours of compensatory services. The complaint is drafted, but not approved to send.</p>
+          <h2>{bottom_heading}</h2>
+          <p>{bottom_detail}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -643,8 +853,12 @@ def render_app() -> None:
     metric_cols[1].metric("Delivered", _minutes(ledger["delivered_minutes"]), f'{ledger["delivered_sessions"]} sessions')
     metric_cols[2].metric("Unexcused gap", _minutes(ledger["unexcused_minutes"]), ledger["shortfall_pct"])
     metric_cols[3].metric("Comp estimate", _minutes(ledger["comp_minutes"]), f'{ledger["comp_hours"]} hours')
-    metric_cols[4].metric("State deadline", det["state_deadline"], f'{det["state_days_remaining"]} days left')
-    metric_cols[5].metric("Material", "Yes" if det["material"] else "No", "deterministic")
+    deadline_delta = (f'{det["state_days_remaining"]} days left'
+                      if det["state_days_remaining"] is not None
+                      else "no allegation")
+    metric_cols[4].metric("Event deadline", det["state_deadline"], deadline_delta)
+    metric_cols[5].metric(
+        "Review signal", "Yes" if det["material"] else "No", "policy threshold")
 
     st.subheader("What the agent did")
     step_cols = st.columns(3)
@@ -655,15 +869,19 @@ def render_app() -> None:
     tabs = st.tabs(["Review Summary", "Evidence Packet", "Human Approval", "Community Pattern", "Technical Proof"])
 
     with tabs[0]:
+        safe_service = html.escape(str(case["service"]))
+        safe_iep_text = html.escape(str(case["iep_text"]))
+        safe_window = html.escape(str(case["window"]))
+        safe_reason = html.escape(str(det["materiality_reason"]))
         left, right = st.columns(2)
         with left:
             st.markdown("### What was promised")
             st.markdown(
                 f"""
                 <div class="review-box">
-                  <p><b>Service:</b> {case["service"]}</p>
-                  <p><b>IEP text:</b> {case["iep_text"]}</p>
-                  <p><b>Review window:</b> {case["window"]}</p>
+                  <p><b>Service:</b> {safe_service}</p>
+                  <p><b>IEP text:</b> {safe_iep_text}</p>
+                  <p><b>Review window:</b> {safe_window}</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -675,7 +893,7 @@ def render_app() -> None:
                 <div class="review-box">
                   <p><b>Logs reviewed:</b> {case["logs"]}</p>
                   <p><b>Missed logs:</b> {case["missed_logs"]}</p>
-                  <p><b>Materiality rule:</b> {det["materiality_reason"]}</p>
+                  <p><b>Review rule:</b> {safe_reason}</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -688,6 +906,13 @@ def render_app() -> None:
         for index, claim in enumerate(payload["claims"]):
             with claim_cols[index % 2]:
                 _render_claim(st, claim)
+        if payload["draft"]["packet"]:
+            st.download_button(
+                "Download evidence packet",
+                data=payload["draft"]["packet"],
+                file_name="due-process-evidence-packet.txt",
+                mime="text/plain",
+            )
 
     with tabs[2]:
         st.markdown("### Human approval gate")
@@ -724,16 +949,25 @@ def render_app() -> None:
 
     with tabs[3]:
         st.markdown("### District-wide pattern")
-        st.caption("This is the community value: individual records can become a privacy-preserving systemic complaint.")
         systemic = payload["systemic"]
-        sys_cols = st.columns(4)
-        sys_cols[0].metric("Students", systemic["students_with_service"])
-        sys_cols[1].metric("Material failures", systemic["students_material"])
-        sys_cols[2].metric("Affected", systemic["share_material"])
-        sys_cols[3].metric("Aggregate gap", systemic["aggregate_gap_label"])
-        st.success(f"K-anonymous district complaint drafted with k >= {systemic['k_threshold']} and no student names.")
-        with st.expander("Systemic complaint draft"):
-            st.text(systemic["draft_preview"])
+        if systemic is None:
+            st.info(
+                "Cohort aggregation is disabled for uploaded cases. It belongs "
+                "in an authorized advocate workspace with enough cases to pass "
+                "the privacy gate.")
+        else:
+            st.caption(
+                "Synthetic cohort: a privacy-gated signal for broader human investigation.")
+            sys_cols = st.columns(4)
+            sys_cols[0].metric("Students", systemic["students_with_service"])
+            sys_cols[1].metric("Review signals", systemic["students_material"])
+            sys_cols[2].metric("Affected", systemic["share_material"])
+            sys_cols[3].metric("Aggregate gap", systemic["aggregate_gap_label"])
+            st.success(
+                f"Synthetic cohort passed the k >= {systemic['k_threshold']} "
+                "reporting gate; no student names are shown.")
+            with st.expander("Draft request for systemic review"):
+                st.text(systemic["draft_preview"])
 
     with tabs[4]:
         st.markdown("### Technical proof")
@@ -744,6 +978,9 @@ def render_app() -> None:
             st.write(f"Extraction method: `{payload['qwen']['extraction_method']}`")
             st.write(f"Classification methods: `{payload['qwen']['classification_methods']}`")
             st.write(f"Models: `{payload['qwen']['orchestrator_model']}` / `{payload['qwen']['workhorse_model']}`")
+            st.write(f"Qwen output used: `{payload['qwen']['used_for_output']}`")
+            with st.expander("Per-call provenance"):
+                st.json(payload["qwen"]["traces"])
         with proof_b:
             st.markdown("#### Deterministic core")
             st.write(payload["deterministic"]["materiality_reason"])
@@ -751,7 +988,7 @@ def render_app() -> None:
             st.write("Grounding rejects claims without real IEP, log, and legal references.")
         draft_col, audit_col = st.columns([1.3, 1])
         with draft_col:
-            st.markdown("### State complaint draft")
+            st.markdown("### Human-review draft")
             st.text(payload["draft"]["text"])
         with audit_col:
             st.markdown("### Backend audit trail")

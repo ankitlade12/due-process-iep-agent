@@ -3,8 +3,9 @@
     python -m due_process.examples.systemic_demo
 
 Analyzes a district's worth of de-identified students, aggregates their
-shortfalls with k-anonymity, and drafts a *systemic* state complaint that
-obligates district-wide relief (34 C.F.R. 300.151(b)). Then shows a plain-language
+shortfalls with k-anonymity, and drafts a request for broader investigation under
+the state-complaint process. It does not determine liability or guarantee relief.
+Then it shows a plain-language
 "receipt" for one parent — translated via Qwen when a key is present — as the
 low-friction, multilingual on-ramp.
 
@@ -54,7 +55,7 @@ def main() -> None:
     for f in findings:
         print(f"  {f.service_type.value}: {f.n_students_material} of "
               f"{f.n_students_with_service} students "
-              f"({f.material_student_share:.0%}) with a material failure; "
+              f"({f.material_student_share:.0%}) crossing the review threshold; "
               f"aggregate unexcused shortfall {f.total_unexcused_minutes} min "
               f"({f.aggregate_shortfall_pct:.1%} of required).")
 

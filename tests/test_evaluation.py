@@ -10,6 +10,7 @@ from due_process.evaluation.metrics import (
     citation_accuracy,
     mae,
 )
+from due_process.evaluation.run_eval import evaluate
 
 TODAY = date(2026, 6, 30)
 
@@ -85,3 +86,11 @@ def test_grounded_citation_accuracy_beats_baseline():
 def test_compensatory_estimate_is_exact_on_synthetic_set():
     *_, comp_true, comp_pred, _, _, _ = _grounded_run()
     assert mae(comp_true, comp_pred) == 0.0
+
+
+def test_structured_offline_report_is_reproducible():
+    report = evaluate()
+    assert report["mode"] == "offline-reproducible"
+    assert report["dataset"]["cases"] == 11
+    assert report["grounded"]["false_positive_rate"] == 0.0
+    assert report["limitations"]

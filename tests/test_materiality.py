@@ -149,3 +149,39 @@ def test_group_dilution_detected():
     finding = classify_materiality(led, logs)
     violations = detect_violations(c, led, logs, finding)
     assert any(v.type == ViolationType.GROUP_DILUTION for v in violations)
+
+
+def test_logs_outside_window_do_not_drive_materiality_or_evidence():
+    c = ServiceCommitment(id="c1", service_type=ServiceType.SPEECH_LANGUAGE,
+                          frequency_count=1, frequency_period=FrequencyPeriod.WEEK,
+                          duration_minutes=30)
+    inside = ServiceLog(id="in", commitment_id="c1", date=date(2025, 9, 10),
+                        minutes_delivered=30, status=LogStatus.DELIVERED)
+    outside = [
+        ServiceLog(id=f"out-{i}", commitment_id="c1",
+                   date=date(2025, 8, 1) + timedelta(days=i),
+                   minutes_delivered=0, status=LogStatus.MISSED,
+                   excused=ExcusedClass.UNEXCUSED)
+        for i in range(3)
+    ]
+    logs = outside + [inside]
+    led = compute_ledger(c, logs, window_start=date(2025, 9, 1),
+                         window_end=date(2025, 9, 30), required_sessions=1)
+    finding = classify_materiality(led, logs)
+    assert finding.is_material is False
+    assert finding.max_consecutive_unexcused == 0
+    assert detect_violations(c, led, logs, finding) == []
+
+
+def test_violation_dates_are_actual_evidence_dates():
+    s = worked_example_speech()
+    led = compute_ledger(s.commitment, s.logs, window_start=s.window_start,
+                         window_end=s.window_end,
+                         instructional_periods=s.instructional_periods)
+    finding = classify_materiality(led, s.logs)
+    violation = detect_violations(s.commitment, led, s.logs, finding)[0]
+    missed_dates = [log.date for log in s.logs
+                    if log.status == LogStatus.MISSED
+                    and log.excused == ExcusedClass.UNEXCUSED]
+    assert violation.window_start == min(missed_dates)
+    assert violation.window_end == max(missed_dates)

@@ -69,6 +69,7 @@ class ReasonClassification:
     rationale: str
     needs_human: bool
     method: str  # "rule_based" | "qwen"
+    fallback_reason: str = ""
 
 
 @dataclass
@@ -145,9 +146,10 @@ def _llm(text: str, client: LLMClient, context: str = "") -> ReasonClassificatio
         data = client.complete_json(
             _SYSTEM, user, model=client.config.workhorse_model
         )
-    except Exception:  # network/parse error -> safe fallback, flag for human
+    except Exception as exc:  # network/parse error -> safe fallback
         rc = _rule_based(text)
         rc.rationale = f"(LLM unavailable; used rules) {rc.rationale}"
+        rc.fallback_reason = f"qwen_error:{type(exc).__name__}"
         return rc
 
     label = str(data.get("label", "ambiguous")).lower()

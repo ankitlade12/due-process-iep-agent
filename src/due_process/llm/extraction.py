@@ -49,6 +49,7 @@ class ExtractedCommitment:
     source_excerpt: str
     needs_confirmation: bool = True
     method: str = "rule_based"
+    fallback_reason: str = ""
 
 
 def _service_type(text: str) -> Optional[ServiceType]:
@@ -199,8 +200,11 @@ def _llm(iep_text: str, client: LLMClient, source_uri: str
         data = client.complete_json(
             _SYSTEM, iep_text, model=client.config.workhorse_model
         )
-    except Exception:
-        return _rule_based(iep_text, source_uri)
+    except Exception as exc:
+        fallback = _rule_based(iep_text, source_uri)
+        for item in fallback:
+            item.fallback_reason = f"qwen_error:{type(exc).__name__}"
+        return fallback
     items = data.get("commitments", []) if isinstance(data, dict) else []
     results: List[ExtractedCommitment] = []
     for obj in items:
@@ -210,7 +214,12 @@ def _llm(iep_text: str, client: LLMClient, source_uri: str
         if parsed is not None:
             results.append(parsed)
     # If the model returned nothing usable, fall back to rules.
-    return results or _rule_based(iep_text, source_uri)
+    if results:
+        return results
+    fallback = _rule_based(iep_text, source_uri)
+    for item in fallback:
+        item.fallback_reason = "qwen_output_failed_schema_validation"
+    return fallback
 
 
 def extract_commitments(

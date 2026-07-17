@@ -1,13 +1,12 @@
 """Systemic evidence — aggregate shortfalls across families into a district case.
 
-One child's complaint fixes one child's services. But IDEA lets a state complaint
-allege a *systemic* violation (34 C.F.R. 300.151(b)): when the failure is
-district-wide, the state education agency must order district-wide relief — which
-fixes services for **every** affected child, not just the one who complained.
+One child's complaint documents one child's services. IDEA's state complaint
+process can also address appropriate future provision of services and corrective
+action (34 C.F.R. 300.151(b)), so patterns across authorized cases can support a
+request for broader investigation.
 
-No parent-side tool aggregates compliance data this way, because the data lives in
-silos (one family per app). This module does the aggregation **with privacy built
-in**: a pattern is only surfaced when at least ``k`` students share it
+This module aggregates authorized cases **with a privacy gate**: a pattern is
+only surfaced when at least ``k`` students share it
 (k-anonymity), and findings report counts and minute totals — never an individual
 child's record. It turns scattered individual shortfalls into the systemic
 evidence that shifts the power asymmetry.
@@ -37,7 +36,8 @@ class StudentCase:
     """One de-identified student's analyzed services within a district.
 
     ``student_id`` is a pseudonym, never a name; it exists only so counts are
-    distinct. No identifiable record leaves this structure.
+    distinct. Callers remain responsible for access control and re-identification
+    risk from small or distinctive cohorts.
     """
 
     student_id: str

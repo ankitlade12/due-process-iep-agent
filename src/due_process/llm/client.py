@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -27,7 +28,7 @@ DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 # Maps the spec's intended roles onto real Qwen Cloud model ids.
 DEFAULT_ORCHESTRATOR_MODEL = "qwen3.7-max"    # reasoning, drafting, the agent loop
-DEFAULT_WORKHORSE_MODEL = "qwen3.6-flash"     # cheap, high-volume extraction/classify
+DEFAULT_WORKHORSE_MODEL = "qwen3.7-plus"      # extraction/classification
 DEFAULT_VISION_MODEL = "qwen3.7-plus"         # scanned IEP PDFs, photographed logs
 
 
@@ -90,6 +91,23 @@ class LLMResult:
     raw: object = None
 
 
+@dataclass(frozen=True)
+class LLMCallTrace:
+    """Auditable provenance for one attempted Qwen call.
+
+    A configured API key is not proof that a model completed a task.  These
+    records let the UI and deployment response distinguish a successful Qwen
+    result from a safe local fallback.
+    """
+
+    model: str
+    operation: str
+    succeeded: bool
+    duration_ms: int
+    request_id: str = ""
+    error_type: str = ""
+
+
 class LLMClient:
     """A thin, lazy OpenAI-compatible client for Qwen Cloud.
 
@@ -101,6 +119,7 @@ class LLMClient:
     def __init__(self, config: Optional[LLMConfig] = None):
         self.config = config or LLMConfig.from_env()
         self._client = None
+        self.traces: list[LLMCallTrace] = []
 
     @property
     def available(self) -> bool:
@@ -137,21 +156,41 @@ class LLMClient:
         json_mode: bool = False,
     ) -> LLMResult:
         """One chat completion. ``model`` defaults to the orchestrator model."""
-        client = self._ensure()
         model = model or self.config.orchestrator_model
+        started = time.perf_counter()
         kwargs = {}
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        resp = client.chat.completions.create(
+        operation = "chat.completions.json" if json_mode else "chat.completions"
+        try:
+            client = self._ensure()
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=(self.config.temperature
+                             if temperature is None else temperature),
+                max_tokens=4096,
+                **kwargs,
+            )
+        except Exception as exc:
+            self.traces.append(LLMCallTrace(
+                model=model,
+                operation=operation,
+                succeeded=False,
+                duration_ms=int((time.perf_counter() - started) * 1000),
+                error_type=type(exc).__name__,
+            ))
+            raise
+        self.traces.append(LLMCallTrace(
             model=model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=(self.config.temperature
-                         if temperature is None else temperature),
-            **kwargs,
-        )
+            operation=operation,
+            succeeded=True,
+            duration_ms=int((time.perf_counter() - started) * 1000),
+            request_id=str(getattr(resp, "id", "") or ""),
+        ))
         return LLMResult(
             text=resp.choices[0].message.content or "",
             model=model,
@@ -183,7 +222,6 @@ class LLMClient:
         Defaults to the vision model (qwen3.7-plus). The image is passed inline as
         a base64 data URL, per the OpenAI-compatible multimodal format.
         """
-        client = self._ensure()
         model = model or self.config.vision_model
         messages = []
         if system:
@@ -196,8 +234,28 @@ class LLMClient:
                  "image_url": {"url": f"data:{mime};base64,{image_b64}"}},
             ],
         })
-        resp = client.chat.completions.create(
-            model=model, messages=messages, temperature=self.config.temperature)
+        started = time.perf_counter()
+        try:
+            client = self._ensure()
+            resp = client.chat.completions.create(
+                model=model, messages=messages,
+                temperature=self.config.temperature, max_tokens=4096)
+        except Exception as exc:
+            self.traces.append(LLMCallTrace(
+                model=model,
+                operation="chat.completions.vision",
+                succeeded=False,
+                duration_ms=int((time.perf_counter() - started) * 1000),
+                error_type=type(exc).__name__,
+            ))
+            raise
+        self.traces.append(LLMCallTrace(
+            model=model,
+            operation="chat.completions.vision",
+            succeeded=True,
+            duration_ms=int((time.perf_counter() - started) * 1000),
+            request_id=str(getattr(resp, "id", "") or ""),
+        ))
         return LLMResult(text=resp.choices[0].message.content or "",
                          model=model, raw=resp)
 

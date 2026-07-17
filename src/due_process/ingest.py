@@ -179,6 +179,7 @@ def read_iep_image(
     *,
     prompt: str = _VISION_PROMPT,
     redactor: Optional[Redactor] = None,
+    image_is_redacted_or_synthetic: bool = False,
 ) -> str:
     """Transcribe a scanned/photographed IEP page via Qwen's vision model.
 
@@ -187,9 +188,17 @@ def read_iep_image(
     supplied, the *returned transcription* is scrubbed of known PII so it is safe
     to store or display. (The image itself is still sent to the cloud, which on a
     real IEP contains PII — redact the image or use the self-hosted model for
-    fully private vision.)
+    fully private vision.) For safety, callers must explicitly attest that the
+    image is already redacted or synthetic; output-only redaction cannot protect
+    identifiers embedded in pixels sent to a cloud model.
     """
     import base64
+
+    if not image_is_redacted_or_synthetic:
+        raise ValueError(
+            "Cloud vision is disabled for unredacted student records. Redact "
+            "the image first, use a synthetic page, or use private/local vision."
+        )
 
     data = Path(image_path).read_bytes()
     b64 = base64.b64encode(data).decode("ascii")

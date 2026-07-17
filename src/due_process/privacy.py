@@ -1,11 +1,12 @@
-"""FERPA-safe redaction — scrub student PII before any cloud model call.
+"""Privacy-minimizing redaction before a cloud model call.
 
-IEPs and service logs are student education records under FERPA (20 U.S.C.
+IEPs and service logs may be student education records under FERPA (20 U.S.C.
 1232g; 34 C.F.R. Part 99). Sending them to a third-party cloud model unredacted
 is the reason a school, nonprofit, or legal-aid clinic would refuse to adopt the
-tool. So before any text leaves for Qwen, this module replaces the child's
-identifiers with placeholders, and can restore them afterward for the parent's
-own local copy.
+tool. The agent workflow uses this module to replace known direct identifiers
+with placeholders before a text call, and can restore them afterward for an
+authorized local copy. It cannot detect every indirect or previously unknown
+identifier and is therefore defense in depth, not a compliance guarantee.
 
 The reliable signal is that the tool already *knows* the student's identifiers
 (the parent entered them), so it can redact those exact strings — far more robust
@@ -124,8 +125,8 @@ class PrivacyLeakError(RuntimeError):
 def redact_for_cloud(text: str, redactor: Optional[Redactor]) -> str:
     """Redact and verify text before a cloud call; a no-op if no redactor.
 
-    Verifies the result is clean, so a redaction miss fails loudly rather than
-    silently leaking a child's name to the model.
+    Verifies that known identifiers are absent, so a known-value redaction miss
+    fails loudly. It cannot prove that the text is fully de-identified.
     """
     if redactor is None:
         return text

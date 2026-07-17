@@ -42,8 +42,10 @@ class MaterialityConfig:
     as the rationale.
     """
 
-    shortfall_pct_threshold: Decimal = Decimal("0.15")  # 15% of required minutes
-    consecutive_missed_threshold: int = 3               # 3 unexcused in a row
+    # Product review thresholds, not statutory bright lines. Crossing one means
+    # "escalate for review," not "a court has found a violation."
+    shortfall_pct_threshold: Decimal = Decimal("0.15")
+    consecutive_missed_threshold: int = 3
     # The standards a materiality finding is grounded to (corpus ids).
     standard_refs: tuple = ("cfr_300_323", "van_duyn")
 
@@ -71,9 +73,11 @@ def classify_materiality(
 ) -> MaterialityFinding:
     """Apply the deterministic materiality rule to a computed ledger."""
     pct = ledger.shortfall_pct
-    consecutive = _max_consecutive_unexcused_missed(
-        [log for log in logs if log.commitment_id == ledger.commitment_id]
-    )
+    consecutive = _max_consecutive_unexcused_missed([
+        log for log in logs
+        if log.commitment_id == ledger.commitment_id
+        and ledger.window_start <= log.date <= ledger.window_end
+    ])
 
     reasons: List[str] = []
     pct_fired = pct >= config.shortfall_pct_threshold
@@ -83,17 +87,17 @@ def classify_materiality(
         reasons.append(
             f"Unexcused shortfall is {pct:.1%} of required minutes "
             f"({ledger.unexcused_shortfall_minutes} of {ledger.required_minutes}), "
-            f"at or above the {config.shortfall_pct_threshold:.0%} threshold."
+            f"at or above the {config.shortfall_pct_threshold:.0%} review threshold."
         )
     if run_fired:
         reasons.append(
             f"{consecutive} consecutive unexcused missed sessions, at or above "
-            f"the threshold of {config.consecutive_missed_threshold}."
+            f"the review threshold of {config.consecutive_missed_threshold}."
         )
     if not reasons:
         reasons.append(
             f"Unexcused shortfall is {pct:.1%} of required minutes, below the "
-            f"{config.shortfall_pct_threshold:.0%} threshold, and the longest run "
+            f"{config.shortfall_pct_threshold:.0%} review threshold, and the longest run "
             f"of consecutive unexcused missed sessions is {consecutive}."
         )
 
@@ -156,23 +160,33 @@ def detect_violations(
     finding. Quality violations (group dilution, late start) are surfaced with
     their evidence; their materiality is a qualitative judgment left to review.
     """
-    window_logs = [log for log in logs if log.commitment_id == commitment.id]
+    window_logs = [
+        log for log in logs
+        if log.commitment_id == commitment.id
+        and ledger.window_start <= log.date <= ledger.window_end
+    ]
     service_label = commitment.service_type.value.replace("_", " ")
     iep_ref = commitment.source_ref
     violations: List[Violation] = []
 
     def _new(vtype: ViolationType, shortfall: int, evidence: List[SourceRef],
-             legal_refs: List[str], mat) -> Violation:
+             legal_refs: List[str], mat, event_logs: List[ServiceLog] | None = None
+             ) -> Violation:
         refs = list(evidence)
         if iep_ref is not None:
             refs.append(iep_ref)
+        event_logs = event_logs or []
+        event_start = min((log.date for log in event_logs),
+                          default=ledger.window_start)
+        event_end = max((log.date for log in event_logs),
+                        default=ledger.window_end)
         return Violation(
             id=_violation_id(commitment.id, vtype,
-                             ledger.window_start, ledger.window_end),
+                             event_start, event_end),
             commitment_id=commitment.id,
             type=vtype,
-            window_start=ledger.window_start,
-            window_end=ledger.window_end,
+            window_start=event_start,
+            window_end=event_end,
             shortfall_minutes=shortfall,
             materiality=mat,
             evidence_refs=refs,
@@ -181,34 +195,36 @@ def detect_violations(
 
     # Missed (unexcused) sessions ------------------------------------------------
     if ledger.unexcused_missed_minutes > 0:
-        evidence = [
-            _log_ref(log, service_label)
-            for log in window_logs
+        missed_logs = [
+            log for log in window_logs
             if log.status == LogStatus.MISSED
             and log.excused == ExcusedClass.UNEXCUSED
         ]
+        evidence = [_log_ref(log, service_label) for log in missed_logs]
         violations.append(_new(
             ViolationType.MISSED_SESSIONS,
             ledger.unexcused_missed_minutes,
             evidence,
             ["cfr_300_320", "cfr_300_323", "van_duyn"],
             materiality,
+            missed_logs,
         ))
 
     # Short sessions -------------------------------------------------------------
     if ledger.short_shortfall_minutes > 0:
-        evidence = [
-            _log_ref(log, service_label)
-            for log in window_logs
+        short_logs = [
+            log for log in window_logs
             if log.status == LogStatus.SHORT
             and log.excused == ExcusedClass.UNEXCUSED
         ]
+        evidence = [_log_ref(log, service_label) for log in short_logs]
         violations.append(_new(
             ViolationType.SHORT_SESSIONS,
             ledger.short_shortfall_minutes,
             evidence,
             ["cfr_300_320", "cfr_300_323", "van_duyn"],
             materiality,
+            short_logs,
         ))
 
     # Group dilution -------------------------------------------------------------
@@ -224,6 +240,7 @@ def detect_violations(
             evidence,
             ["cfr_300_320", "cfr_300_323"],
             None,
+            diluted,
         ))
 
     # Late start -----------------------------------------------------------------

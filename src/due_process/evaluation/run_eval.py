@@ -1,108 +1,173 @@
-"""Run the evaluation and print the grounded-vs-baseline comparison.
+"""Reproducible grounded-vs-baseline evaluation.
 
-    python -m due_process.evaluation.run_eval
+Run the stable offline comparison used in repository documentation:
 
-Offline it uses the heuristic baseline (clearly labeled); with a key it uses raw
-Qwen. The headline is the grounded system's false-positive rate and citation
-accuracy against the baseline's.
+    python -m due_process.evaluation.run_eval --offline
+
+Use ``--online`` for an explicitly live raw-Qwen baseline. Live results vary by
+model/version and are deliberately not presented as the repository benchmark.
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 from datetime import date
-from typing import List
+from typing import Any, List, Optional
 
 from ..analysis import analyze_commitment
-from ..llm.client import default_client
-from .baseline import get_baseline
+from ..llm.client import LLMClient, default_client
+from .baseline import HeuristicBaseline, QwenBaseline
 from .dataset import build_dataset
 from .metrics import binary_metrics, citation_accuracy, mae
 
 TODAY = date(2026, 6, 30)
 
 
-def main() -> None:
+def evaluate(*, online: bool = False,
+             client: Optional[LLMClient] = None) -> dict[str, Any]:
+    """Return a structured report; offline mode is stable and network-free."""
     cases = build_dataset()
-    client = default_client()
-    baseline = get_baseline(client)
+    if online:
+        resolved_client = client or default_client()
+        if not resolved_client.available:
+            raise RuntimeError(
+                "--online requires DASHSCOPE_API_KEY and the OpenAI SDK.")
+        baseline = QwenBaseline(resolved_client)
+    else:
+        baseline = HeuristicBaseline()
 
     labels: List[bool] = []
-    g_preds: List[bool] = []
-    b_preds: List[bool] = []
+    grounded_preds: List[bool] = []
+    baseline_preds: List[bool] = []
     comp_true: List[int] = []
     comp_pred: List[int] = []
-    g_cite_ids: List[str] = []
-    b_cite_raw_total = 0
-    b_cite_valid = 0
-
+    grounded_citations: List[str] = []
+    baseline_citation_total = 0
+    baseline_citation_valid = 0
     rows = []
+
     for case in cases:
         analysis = analyze_commitment(
             case.commitment, case.logs,
             window_start=case.window_start, window_end=case.window_end,
             today=TODAY, instructional_periods=case.periods,
         )
-        g_pred = analysis.materiality.is_material
-        b = baseline.predict(case)
-
+        grounded_pred = analysis.materiality.is_material
+        baseline_result = baseline.predict(case)
         labels.append(case.label_material)
-        g_preds.append(g_pred)
-        b_preds.append(b.material)
+        grounded_preds.append(grounded_pred)
+        baseline_preds.append(baseline_result.material)
         comp_true.append(case.label_comp_minutes)
-        comp_pred.append(analysis.compensatory.estimated_minutes
-                         if analysis.compensatory else 0)
+        comp_pred.append(
+            analysis.compensatory.estimated_minutes
+            if analysis.compensatory else 0)
+        if grounded_pred:
+            for violation in analysis.violations:
+                grounded_citations.extend(violation.legal_refs)
+        if baseline_result.material:
+            baseline_citation_total += len(baseline_result.raw_citations)
+            baseline_citation_valid += len(baseline_result.matched_ids)
+        rows.append({
+            "case": case.name,
+            "label": case.label_material,
+            "grounded": grounded_pred,
+            "baseline": baseline_result.material,
+            "provenance": case.provenance,
+        })
 
-        if g_pred:
-            for v in analysis.violations:
-                g_cite_ids.extend(v.legal_refs)
-        if b.material:
-            b_cite_raw_total += len(b.raw_citations)
-            b_cite_valid += len(b.matched_ids)
+    grounded = binary_metrics(labels, grounded_preds)
+    base = binary_metrics(labels, baseline_preds)
+    baseline_citation_accuracy = (
+        baseline_citation_valid / baseline_citation_total
+        if baseline_citation_total else 0.0)
 
-        rows.append((case.name, case.label_material, g_pred, b.material))
+    def metric_dict(value, citation_score: float) -> dict[str, float]:
+        return {
+            "precision": value.precision,
+            "recall": value.recall,
+            "f1": value.f1,
+            "false_positive_rate": value.false_positive_rate,
+            "accuracy": value.accuracy,
+            "citation_accuracy": citation_score,
+        }
 
-    g = binary_metrics(labels, g_preds)
-    bm = binary_metrics(labels, b_preds)
-    g_cite_acc = citation_accuracy(g_cite_ids)
-    b_cite_acc = (b_cite_valid / b_cite_raw_total) if b_cite_raw_total else 0.0
-    comp_mae = mae(comp_true, comp_pred)
+    return {
+        "mode": "online-qwen" if online else "offline-reproducible",
+        "evaluation_date": TODAY.isoformat(),
+        "dataset": {
+            "cases": len(cases),
+            "material": sum(labels),
+            "not_material": len(cases) - sum(labels),
+            "documented_or_court_derived": sum(
+                1 for case in cases if case.provenance != "synthetic"),
+        },
+        "baseline": baseline.name,
+        "grounded": metric_dict(
+            grounded, citation_accuracy(grounded_citations)),
+        "baseline_metrics": metric_dict(base, baseline_citation_accuracy),
+        "compensatory_minutes_mae": mae(comp_true, comp_pred),
+        "cases": rows,
+        "limitations": [
+            "Most labels are synthetic and encode the product review policy.",
+            "This evaluates software consistency, not legal validity or outcomes.",
+            "Online Qwen results can vary by model version and service behavior.",
+        ],
+    }
 
-    n_material = sum(labels)
-    n_documented = sum(1 for c in cases if c.provenance != "synthetic")
+
+def _print_report(report: dict[str, Any]) -> None:
+    grounded = report["grounded"]
+    base = report["baseline_metrics"]
     print("=" * 72)
-    print("DUE PROCESS — material-failure detection evaluation")
+    print("DUE PROCESS — service-delivery review evaluation")
     print("=" * 72)
-    print(f"Dataset: {len(cases)} labeled cases "
-          f"({n_material} material, {len(cases) - n_material} not; "
-          f"{n_documented} with documented/court-derived labels)")
-    print(f"Baseline: {baseline.name}")
-    print()
-
-    print(f"{'metric':<22}{'GROUNDED':>14}{'BASELINE':>14}")
+    ds = report["dataset"]
+    print(f"Mode: {report['mode']}")
+    print(f"Dataset: {ds['cases']} labeled cases ({ds['material']} review-signal, "
+          f"{ds['not_material']} no-signal; "
+          f"{ds['documented_or_court_derived']} independently documented)")
+    print(f"Baseline: {report['baseline']}\n")
+    print(f"{'metric':<24}{'GROUNDED':>14}{'BASELINE':>14}")
     print("-" * 72)
-    print(f"{'precision':<22}{g.precision:>14.2f}{bm.precision:>14.2f}")
-    print(f"{'recall':<22}{g.recall:>14.2f}{bm.recall:>14.2f}")
-    print(f"{'F1':<22}{g.f1:>14.2f}{bm.f1:>14.2f}")
-    print(f"{'false-positive rate':<22}{g.false_positive_rate:>14.2f}"
-          f"{bm.false_positive_rate:>14.2f}")
-    print(f"{'accuracy':<22}{g.accuracy:>14.2f}{bm.accuracy:>14.2f}")
-    print(f"{'citation accuracy':<22}{g_cite_acc:>14.2f}{b_cite_acc:>14.2f}")
-    print(f"{'comp-minutes MAE':<22}{comp_mae:>14.1f}{'n/a':>14}")
-    print()
-
+    for key, label in (
+        ("precision", "precision"), ("recall", "recall"),
+        ("f1", "F1"), ("false_positive_rate", "false-positive rate"),
+        ("accuracy", "accuracy"),
+        ("citation_accuracy", "citation accuracy"),
+    ):
+        print(f"{label:<24}{grounded[key]:>14.2f}{base[key]:>14.2f}")
+    print(f"{'comp-minutes MAE':<24}"
+          f"{report['compensatory_minutes_mae']:>14.1f}{'n/a':>14}\n")
     print("Per-case (label / grounded / baseline):")
     print("-" * 72)
-    for name, label, gp, bp in rows:
-        flag = "" if (gp == label) else "  <- grounded miss"
-        print(f"  {name:<28} {_yn(label)}   g:{_yn(gp)}   b:{_yn(bp)}{flag}")
-    print()
-    print("Headline: the grounded system's false-positive rate and citation "
-          "accuracy beat the ungrounded baseline — the credibility story no "
-          "incumbent reports.")
+    for row in report["cases"]:
+        print(f"  {row['case']:<28} {_yn(row['label'])}   "
+              f"g:{_yn(row['grounded'])}   b:{_yn(row['baseline'])}")
+    print("\nLimitations:")
+    for item in report["limitations"]:
+        print(f"  - {item}")
 
 
-def _yn(b: bool) -> str:
-    return "MAT" if b else "ok "
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--offline", action="store_true",
+                      help="stable heuristic baseline (default)")
+    mode.add_argument("--online", action="store_true",
+                      help="live raw-Qwen baseline; requires a key")
+    parser.add_argument("--json", action="store_true",
+                        help="emit machine-readable JSON")
+    args = parser.parse_args()
+    report = evaluate(online=args.online)
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        _print_report(report)
+
+
+def _yn(value: bool) -> str:
+    return "YES" if value else "no "
 
 
 if __name__ == "__main__":

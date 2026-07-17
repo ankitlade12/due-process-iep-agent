@@ -137,15 +137,27 @@ def run_enforcement(
 ) -> AgentRun:
     """Execute the enforcement workflow end to end.
 
-    ``redact`` (on by default) scrubs student PII from any text sent to the cloud
-    model, using the identifiers in ``context`` — FERPA-safe by default.
+    ``redact`` (on by default) removes known direct identifiers from text sent to
+    the cloud model. This is defense in depth, not a FERPA compliance guarantee.
     """
     policy = policy or ApprovalPolicy()
     today = now.date()
     run = AgentRun()
-    redactor = (Redactor.for_case(student_name=context.student_name,
-                                  parent_name=context.parent_name)
-                if redact else None)
+    extra_identifiers = {
+        value: label
+        for value, label in (
+            (context.parent_address, "[PARENT_ADDRESS]"),
+            (context.parent_contact, "[PARENT_CONTACT]"),
+            (context.student_address, "[STUDENT_ADDRESS]"),
+            (context.school_address, "[SCHOOL_ADDRESS]"),
+        )
+        if value and not value.startswith("[")
+    }
+    redactor = (Redactor.for_case(
+        student_name=context.student_name,
+        parent_name=context.parent_name,
+        extra=extra_identifiers,
+    ) if redact else None)
 
     def log_step(step: str, detail: str) -> None:
         run.audit.append(AuditEntry(step=step, detail=detail, at=now))
@@ -157,9 +169,13 @@ def run_enforcement(
             source_uri="oss://ieps/this-student.pdf", redactor=redactor,
         )
         method = run.extracted[0].method if run.extracted else "none"
-        log_step("extract",
-                 f"Parsed {len(run.extracted)} commitment(s) from the IEP "
-                 f"({method}).")
+        detail = (f"Parsed {len(run.extracted)} commitment(s) from the IEP "
+                  f"({method}).")
+        fallback_reason = (run.extracted[0].fallback_reason
+                           if run.extracted else "")
+        if fallback_reason:
+            detail += f" Explicit fallback reason={fallback_reason}."
+        log_step("extract", detail)
         cp_ok = policy.confirm_commitments(run.extracted)
         run.checkpoints.append(Checkpoint(
             "confirm_commitments",
@@ -191,9 +207,13 @@ def run_enforcement(
 
     # 2) Classify missed/short reasons ----------------------------------------
     run.classification = classify_logs(logs, client=client, redactor=redactor)
+    methods: Dict[str, int] = {}
+    for result in run.classification.classifications.values():
+        methods[result.method] = methods.get(result.method, 0) + 1
     log_step("classify",
-             f"Classified reasons; {run.classification.needs_human_count} "
-             f"flagged ambiguous for human review.")
+             f"Classified reasons via {methods}; "
+             f"{run.classification.needs_human_count} flagged ambiguous for "
+             "human review.")
     if run.classification.review_items:
         resolved = policy.resolve_ambiguous(run.classification.review_items)
         applied = 0
