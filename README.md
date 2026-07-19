@@ -1,255 +1,458 @@
-# Due Process — an IEP enforcement agent
+# Due Process — IEP Evidence Operations
 
-> **From one-time IEP review to continuous, evidence-backed delivery review.**
->
-> The incumbents prepare you for the IEP meeting. This one holds the school accountable *after* it.
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-bounded%20AI-6F4AFF.svg)](https://www.alibabacloud.com/en/product/modelstudio)
+[![Render](https://img.shields.io/badge/Render-live-46E3B7.svg?logo=render&logoColor=111111)](https://due-process-iep-evidence.onrender.com)
+[![CI](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen.svg)](#reproducible-proof)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Millions of US students receive services under IDEA through an Individualized
-Education Program (IEP). When delivery records are fragmented, families and
-advocates must reconstruct what was promised, what happened, and which questions
-to raise—often under filing deadlines.
+> **An IEP says what a school promised. Due Process shows what the records prove—and keeps every next step under human control.**
 
-**Due Process** is a grounded compliance agent that tracks whether a school
-actually delivers what the IEP describes, documents potential gaps, estimates a
-starting point for discussion, and drafts a review packet—**with factual claims
-tied to source records, authorities selected from a controlled corpus, and a human
-approving every external action.**
+Due Process is an evidence-operations workspace for families, advocates, and
+special-education teams. It turns an IEP service commitment and months of delivery
+logs into a reconciled ledger, a source-grounded evidence packet, and a draft next
+step for human review.
 
-Built for the Qwen Cloud hackathon, **Track 4 (Autopilot Agent)**: an end-to-end
-workflow with a human checkpoint at every critical decision.
+Qwen handles narrow language tasks. Deterministic code owns the arithmetic,
+deadlines, policy threshold, and citation validation. No email, filing, or cloud
+storage action occurs without a separate human approval.
 
-## What makes it novel — and who it helps
+Built for the **Global AI Hackathon Series with Qwen Cloud**, Track 4: Autopilot
+Agent.
 
-It's open-source infrastructure for the people who already help families for free,
-not another paid consumer app. Four ideas, layered:
+## Quick highlights
 
-1. **Continuous evidence, not just meeting prep.** Existing products also help
-   families track delivery and draft communications. Due Process differentiates
-   itself with an open, deterministic ledger, source-level provenance, explicit
-   review thresholds, and reproducible evaluation.
-2. **Privacy-gated pattern review.** With authorization across a caseload, it can
-   aggregate de-identified shortfalls using a k-anonymity threshold and draft a
-   request for broader investigation. It does not determine liability or guarantee
-   district-wide relief. (`python -m due_process.examples.systemic_demo`)
-3. **A force-multiplier for the under-resourced.** Federally-funded Parent
-   Training & Information centers, legal clinics, and pro-bono advocates handle
-   substantial caseloads. This is an open, multi-case workflow they can inspect
-   and adapt.
-4. **Built for access.** "Receipts, not lawsuits" — it starts as a friendly
-   record you keep, escalation optional. And it speaks the parent's language: the
-   plain-language summary translates via Qwen, because the enforcement system
-   silently assumes an English-fluent, sophisticated parent and most families
-   aren't.
+- **Promised vs. delivered ledger** — reconciles required, delivered, excused,
+  unexcused, short, and make-up service minutes
+- **Bounded Qwen reasoning** — extracts messy IEP service language and classifies
+  free-text missed-session reasons into fixed schemas
+- **Human-owned interpretation** — extracted commitments must be confirmed and
+  ambiguous records must be resolved before analysis continues
+- **Evidence receipts** — each finding points to the exact IEP provision, service
+  log rows, and controlled legal authorities that support it
+- **Deterministic consequences** — models never calculate shortfalls, select legal
+  citations, or decide whether a review threshold was crossed
+- **Safe drafting** — prepares a review packet or complaint draft but never sends
+  or files it
+- **Privacy-gated case intake** — the public app accepts only synthetic or already
+  de-identified records and includes a complete redacted demonstration kit
+- **Production proof** — public Render workspace, verified Qwen Cloud calls, and a
+  deployed Alibaba Cloud Function Compute backend
 
-## The core design principle: deterministic core, bounded LLM
+## Live deployment
 
-The thing that makes this credible (and not "trust the LLM") is a hard boundary:
-
-| **Deterministic code** (unit-tested, auditable) | **Qwen LLM** (bounded, fills fixed scaffolds) |
-|---|---|
-| Minutes arithmetic: required vs delivered vs excused | Classify a free-text missed reason as excused / unexcused |
-| Configurable review threshold (not a legal bright line) | Extract service commitments from messy IEP text |
-| Statute-of-limitations math | Summarize the pattern in plain language |
-| Prior Written Notice 7-element checklist | Draft the letter narrative into a fixed legal template |
-
-**No LLM ever does the math or the law lookup.** Every flagged violation is grounded
-to three things a parent can click and verify: the IEP provision, the service-log
-entries that show the shortfall, and a controlled IDEA/state authority corpus.
-The publication gate rejects citations that do not resolve to that corpus and
-shortfalls that lack source IDs. This reduces unsupported output; it does not
-guarantee the corpus is complete or that an authority controls a particular case.
-
-## The agent workflow (Track 4)
-
-![Due Process architecture](docs/architecture.svg)
-
-```
-ingest IEP text + raw service logs
-  → extract service commitments        [checkpoint: human confirms parsed values]
-  → classify missed-session reasons    [checkpoint: human resolves ambiguous]
-  → run the deterministic analysis     (auditable math — no checkpoint needed)
-  → draft the right instrument         (service-log request / state complaint)
-  → approve before external action     [checkpoint: human approval]
-  → export or optionally store through an authenticated adapter
-```
-
-The agent never classifies an ambiguous reason on its own and never authorizes an
-external action without approval. Every step is recorded in an audit trail.
-
-## Reproducible evaluation
-
-The repository ships a labeled evaluation and prominently reports false-positive
-rate. The stable, network-free comparison is:
-
-| metric | **grounded** | offline heuristic baseline |
+| Surface | URL | Access |
 |---|---|---|
-| precision | 1.00 | 0.78 |
-| recall | 1.00 | 1.00 |
-| false-positive rate | **0.00** | 0.50 |
-| citation accuracy | **1.00** | 0.00 |
-| compensatory-minutes MAE | **0.0** | n/a |
+| **Product workspace** | [due-process-iep-evidence.onrender.com](https://due-process-iep-evidence.onrender.com) | Public; synthetic/de-identified data only |
+| **Health check** | [/_stcore/health](https://due-process-iep-evidence.onrender.com/_stcore/health) | Public |
+| **Source repository** | [github.com/ankitlade12/due-process-iep-agent](https://github.com/ankitlade12/due-process-iep-agent) | Public |
+| **Alibaba deployment proof** | [Function Compute verification](docs/DEPLOYMENT_PROOF.md) | Sanitized request ID and Qwen provenance |
 
-Reproduce it with `python -m due_process.evaluation.run_eval --offline`. The
-explicit `--online` mode compares against live raw Qwen, but those results can vary
-by model version and are not the repository benchmark.
+The public presentation layer runs on Render. Live analysis uses Qwen Cloud for
+bounded extraction, classification, and narrative tasks. The repository also
+ships the verified Alibaba Cloud Function Compute deployment used to demonstrate
+the same guarded backend contract. Optional evidence storage is intentionally
+disabled in the public demo.
 
-**Honest caveat:** most labels are synthetic and constructed to the system's own
-materiality rule, so the headline is the *contrast* with the baseline (lower FPR,
-no unverifiable citations), not proof the threshold is legally perfect. One
-scenario has an **independent court-derived anchor**: *Van Duyn*, where a court
-held a 50% tutoring shortfall material. Full validation still needs a corpus of
-advocate-labeled de-identified IEPs (on the roadmap).
+## Sixty-second product tour
+
+1. Open the [live workspace](https://due-process-iep-evidence.onrender.com).
+2. Leave **Synthetic worked example** selected and choose **Start Qwen review**.
+3. Inspect Qwen's structured commitment, confirm it, and run the deterministic
+   ledger.
+4. Open **Evidence Packet** to trace a finding back to its IEP, log, and legal
+   sources.
+5. Open **Human Approval** to verify that outbound action remains blocked.
+6. Open **Technical Proof** to see the models, per-call provenance, and the
+   deterministic rationale.
+
+To demonstrate real intake instead, choose **Upload redacted case** and follow the
+[redacted live-demo case](docs/REDACTED_DEMO_CASE.md). The app supplies both the
+uploadable CSV and the supporting note needed to resolve its deliberate ambiguity.
+
+## Architecture
+
+### Product workflow
+
+```mermaid
+flowchart LR
+    I[IEP service text] --> Q1[Qwen structured extraction]
+    L[Service-log CSV] --> Q2[Qwen reason classification]
+    Q1 --> H1{Human confirms commitment}
+    Q2 --> H2{Human resolves ambiguity}
+    H1 --> D[Deterministic ledger]
+    H2 --> D
+    D --> G[Grounding and deadline engine]
+    G --> P[Evidence packet + draft]
+    P --> H3{Human reviews next step}
+    H3 -->|Not approved| B[Outbound action blocked]
+    H3 -->|Separately approved| A[Authenticated adapter]
+```
+
+### Runtime architecture
+
+```mermaid
+graph TB
+    subgraph "PUBLIC PRODUCT SURFACE"
+        USER[Family or advocate]
+        UI[Streamlit case desk on Render]
+    end
+
+    subgraph "BOUNDED AI LAYER"
+        QWEN[Qwen Cloud / Model Studio]
+        EXTRACT[Commitment extraction]
+        CLASSIFY[Reason classification]
+        NARRATIVE[Plain-language narrative]
+    end
+
+    subgraph "TRUSTED APPLICATION CORE"
+        LEDGER[Deterministic service ledger]
+        DEADLINES[Deadline calculations]
+        CORPUS[Controlled authority corpus]
+        GROUND[Grounding publication gate]
+        APPROVAL[Human approval checkpoints]
+    end
+
+    subgraph "ALIBABA CLOUD PROOF"
+        FC[Function Compute backend]
+        OSS[(Optional private OSS storage)]
+    end
+
+    USER --> UI
+    UI --> QWEN
+    QWEN --> EXTRACT
+    QWEN --> CLASSIFY
+    QWEN --> NARRATIVE
+    EXTRACT --> APPROVAL
+    CLASSIFY --> APPROVAL
+    APPROVAL --> LEDGER
+    LEDGER --> DEADLINES
+    LEDGER --> GROUND
+    CORPUS --> GROUND
+    GROUND --> APPROVAL
+    APPROVAL -. explicit authenticated action .-> FC
+    FC -. optional .-> OSS
+
+    style QWEN fill:#eee9ff,stroke:#6f4aff,stroke-width:2px
+    style LEDGER fill:#fff4e1,stroke:#c56b00,stroke-width:2px
+    style APPROVAL fill:#e8f5e9,stroke:#267455,stroke-width:2px
+    style FC fill:#e7f3ff,stroke:#176d8a,stroke-width:2px
+```
+
+The central design rule is simple: **Qwen may interpret language, but it cannot
+establish the consequential facts alone.** A human confirms interpretation;
+deterministic code computes the result; a grounding gate verifies every published
+claim.
+
+### Technology stack
+
+| Layer | Technology | Responsibility |
+|---|---|---|
+| **Product surface** | Streamlit | Case intake, review checkpoints, evidence packet, technical proof |
+| **Language/runtime** | Python 3.10+ | Typed domain models and agent orchestration |
+| **Model layer** | Qwen Cloud via Model Studio's OpenAI-compatible API | Bounded extraction, classification, vision, and narrative tasks |
+| **Analysis core** | Custom deterministic Python engine | Ledger arithmetic, materiality screening, deadlines, make-up reconciliation |
+| **Grounding** | Controlled IDEA / CFR / U.S.C. / case-law corpus | Source resolution and claim publication gate |
+| **Local persistence** | SQLite | Case memory and deadline agenda |
+| **Cloud backend** | Alibaba Cloud Function Compute | Authenticated agent endpoint and deployment proof |
+| **Optional artifacts** | Alibaba Cloud OSS | Approval-gated evidence packet storage with SHA-256 receipt |
+| **Frontend deployment** | Render Blueprint | Public Streamlit service and health check |
+| **Testing** | pytest + GitHub Actions | Unit, integration, privacy, grounding, deployment, and evaluation coverage |
+
+## The problem
+
+An IEP meeting produces a service promise, but proof of delivery is scattered
+across weekly logs, absence notes, provider comments, and calendars. When sessions
+are missed, a family or advocate must answer four different questions:
+
+- What exactly did the IEP require?
+- Which sessions were delivered, excused, missed, shortened, or made up?
+- Which source records support each concern?
+- Which safe next step is available before a filing window closes?
+
+General-purpose chatbots can summarize a document, but a plausible paragraph is
+not an auditable service ledger. High-stakes evidence work needs provenance,
+repeatable calculations, explicit uncertainty, and human control.
+
+## The solution
+
+Due Process converts records into a reviewable chain of evidence:
+
+1. Qwen extracts a structured commitment from the IEP service language.
+2. A human compares every extracted field with the source.
+3. Qwen classifies clear missed-session reasons and escalates unclear ones.
+4. A human resolves each ambiguity using the underlying record.
+5. Deterministic code reconciles required and recorded minutes.
+6. The grounding gate attaches real IEP, log, and authority references.
+7. The agent drafts an evidence packet and holds it for human review.
+8. External action remains unavailable unless a separate authenticated approval is
+   provided.
+
+The result is not an automated lawyer. It is an auditable evidence-operations
+workspace that helps a human review the record faster and more consistently.
+
+## Product capabilities
+
+### Real-record intake
+
+- CSV/TSV service logs with fuzzy header mapping and status inference
+- text-based PDF ingestion
+- Qwen vision path for synthetic or already-redacted scanned IEP images
+- explicit privacy attestation on the public upload workflow
+- packaged redacted case with a separate source note for the human checkpoint
+
+### Deterministic evidence ledger
+
+- required vs. delivered session and minute totals
+- excused, unexcused, incomplete, and ambiguous buckets
+- short-session and make-up-session reconciliation
+- configurable 15% product review threshold, clearly labeled as a screening
+  signal rather than a legal bright line
+- one-year state-complaint and two-year due-process deadline calculations
+
+### Grounded review packet
+
+- IEP commitment excerpt
+- exact supporting service-log row IDs
+- controlled legal authority references
+- numbered exhibit index
+- human-review complaint draft
+- downloadable text packet
+
+### Human and privacy controls
+
+- confirmation before extracted values affect analysis
+- unresolved ambiguity blocks deterministic finalization
+- no automated email or filing action
+- direct-identifier redaction before text-model calls
+- no public aggregation below the configured k-anonymity threshold
+- authenticated custom requests on Function Compute
+- separate approval for optional artifact storage
+
+## Deterministic core, bounded Qwen
+
+| Deterministic code owns | Qwen is allowed to do |
+|---|---|
+| Required and delivered minute arithmetic | Extract service commitments into a fixed schema |
+| Review-threshold calculation | Classify reason text as excused, unexcused, or ambiguous |
+| Deadline calculations | Read a synthetic/redacted scanned IEP |
+| Make-up reconciliation | Draft plain-language narrative inside a fixed structure |
+| Authority selection and source-ID validation | Explain its bounded classification rationale |
+| Publication rejection for ungrounded claims | Never approve, send, file, or store evidence |
+
+Every model task has a transparent local fallback. Without a Qwen key, the product
+still runs through its deterministic rules and templates and labels that mode
+honestly in the interface.
 
 ## Quick start
 
+### Prerequisites
+
+- Python 3.10+
+- [`uv`](https://docs.astral.sh/uv/) recommended, or a standard Python virtual
+  environment
+- optional Qwen Cloud API key for live model-backed review
+
+### Install and run
+
 ```bash
+git clone https://github.com/ankitlade12/due-process-iep-agent.git
+cd due-process-iep-agent
+
 uv venv
 uv pip install -e ".[dev,llm,ingest,demo]"
 
-# 1) Deterministic core — reproduce the spec's worked example (108 vs 72 sessions):
-python -m due_process.examples.worked_example
+cp .env.example .env
+# Add DASHSCOPE_API_KEY only if live Qwen execution is desired.
 
-# 2) Full Track 4 workflow — extract → classify → analyze → draft → approve:
-python -m due_process.examples.agent_demo
-
-# 3) Systemic evidence — a district of families → one de-identified district complaint:
-python -m due_process.examples.systemic_demo
-
-# 4) Scanned-IEP vision — Qwen reads a (synthetic) IEP image, then it's parsed:
-python -m due_process.examples.vision_demo
-
-# 5) Stable evaluation — grounded system vs offline heuristic baseline:
-python -m due_process.evaluation.run_eval --offline
-
-# 6) Live advocate case desk: Qwen/rules prepare inputs, a human edits and
-# confirms them, deterministic analysis runs, then the packet can be downloaded
-# or optionally stored through Function Compute with a verifiable OSS receipt.
 streamlit run src/due_process/examples/case_desk.py
-
-# Test suite (all offline):
-uv run --extra dev pytest
 ```
 
-For the public upload workflow, use the packaged
-[redacted live-demo case](docs/REDACTED_DEMO_CASE.md). The app pre-fills its
-de-identified case details and provides the matching service-log CSV as a
-download inside the sidebar.
+The full synthetic workflow works without an API key through explicit offline
+fallbacks.
 
-Or use the installed CLI on real files:
+### Useful commands
+
+```bash
+# Canonical 108-session worked example
+python -m due_process.examples.worked_example
+
+# Full guarded agent workflow
+python -m due_process.examples.agent_demo
+
+# Qwen Cloud smoke test
+python -m due_process.examples.qwen_smoketest
+
+# Scanned synthetic IEP path
+python -m due_process.examples.vision_demo
+
+# Privacy-gated cohort pattern demo
+python -m due_process.examples.systemic_demo
+
+# Reproducible grounded-vs-baseline evaluation
+python -m due_process.evaluation.run_eval --offline
+```
+
+The installed CLI also accepts service logs directly:
 
 ```bash
 due-process analyze --logs service_log.csv --service speech --freq 3 \
-    --duration 30 --periods 36 --state NY --draft --packet complaint_packet.txt
-due-process pwn --file prior_written_notice.txt        # check the 7 elements
-due-process vision --image scanned_iep.png --redacted-or-synthetic
+  --duration 30 --periods 36 --state NY --draft \
+  --packet complaint_packet.txt
 ```
 
-## Demo and submission docs
-
-- [`docs/architecture.md`](docs/architecture.md) - Qwen Cloud, deterministic core,
-  grounding, human approval, and Alibaba Function Compute deployment view.
-- [`docs/TWO_PERSON_DEMO_SCRIPT.md`](docs/TWO_PERSON_DEMO_SCRIPT.md) - 2:10-2:30
-  recording script for two presenters.
-- [`docs/SUBMISSION.md`](docs/SUBMISSION.md) - Devpost-facing project description
-  and longer 3-minute script.
-- [`docs/PRODUCT_STRATEGY.md`](docs/PRODUCT_STRATEGY.md) - the sharper evidence
-  flight-recorder wedge, judge story, defensibility, and 30-day roadmap.
-
-Everything above runs **with no API key**, using transparent rule-based / template
-fallbacks. To use Qwen for messy real-world inputs, add a key:
+## Reproducible proof
 
 ```bash
-cp .env.example .env          # then paste your Qwen Cloud key into DASHSCOPE_API_KEY
+# Full offline suite
+uv run --extra dev pytest
+
+# Stable evaluation
+python -m due_process.evaluation.run_eval --offline --json
+
+# Public deployment health
+curl https://due-process-iep-evidence.onrender.com/_stcore/health
 ```
 
-## Qwen Cloud integration
+Current verified result:
 
-The LLM layer targets Qwen Cloud's OpenAI-compatible endpoint
-(`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`). Model roles:
-
-- **`qwen3.7-max`** — higher-capacity reasoning and letter narrative
-- **`qwen3.7-plus`** — default workhorse for extraction/classification
-- **`qwen3.7-plus`** — multimodal scanned-IEP reading; the Function Compute demo
-  also uses it as the low-latency deployed workhorse
-
-The code is provider-pluggable: every Qwen-backed task has a deterministic
-fallback, so the system degrades gracefully to offline rules and upgrades to Qwen
-the moment `DASHSCOPE_API_KEY` is present.
-
-Verify the live integration (exercises extraction, classification, and narrative
-against the real endpoint):
-
-```bash
-python -m due_process.examples.qwen_smoketest
+```text
+156 passed
 ```
 
-### Proof of deployment (Alibaba Cloud)
+The included offline evaluation compares the grounded pipeline with an ungrounded
+heuristic baseline:
 
-The project calls the **Qwen Cloud (Alibaba Cloud)** API. The base URL is in
-[`src/due_process/llm/client.py`](src/due_process/llm/client.py) —
-`https://dashscope-intl.aliyuncs.com/compatible-mode/v1` — and is used by every
-LLM call, by the live check `python -m due_process.examples.qwen_smoketest`, and
-by the Function Compute handler in [`deploy/`](deploy/) (`handler.py` + `s.yaml`),
-which reports whether Model Studio completed each task or a safe local fallback
-was used. Token Plan users override the base URL via `DUE_PROCESS_LLM_BASE_URL`
-(see `.env.example`).
+| Metric | Grounded pipeline | Offline baseline |
+|---|---:|---:|
+| Precision | 1.00 | 0.78 |
+| Recall | 1.00 | 1.00 |
+| False-positive rate | **0.00** | 0.50 |
+| Citation accuracy | **1.00** | 0.00 |
+| Compensatory-minutes MAE | **0.0** | n/a |
 
-## Package layout
+Most evaluation labels are synthetic and constructed around the product's own
+screening rule. These numbers demonstrate repeatability and contrast with the
+baseline; they do not establish legal validity. One scenario has an independent
+court-derived anchor from *Van Duyn*. Advocate-labeled, de-identified validation
+remains future work.
 
+## Project structure
+
+```text
+due-process-iep-agent/
+├── src/due_process/
+│   ├── agent.py                 # guarded orchestration and checkpoints
+│   ├── ledger.py                # deterministic promised-vs-delivered math
+│   ├── grounding.py             # evidence and citation publication gate
+│   ├── deadlines.py             # distinct filing-window calculations
+│   ├── privacy.py               # text redaction and vision safeguards
+│   ├── filing.py                # evidence packet export
+│   ├── systemic.py              # privacy-gated cohort signals
+│   ├── llm/                     # bounded Qwen tasks and local fallbacks
+│   ├── evaluation/              # labeled cases, baseline, and metrics
+│   ├── instruments/             # fixed drafts and approval contracts
+│   └── examples/                # Streamlit desk and runnable demos
+├── deploy/                      # Function Compute handler and Serverless Devs spec
+├── docs/                        # architecture, submission, proof, and demo guides
+├── tests/                       # offline unit and integration suite
+├── render.yaml                  # public Streamlit Blueprint
+├── pyproject.toml               # package and dependency contract
+└── .env.example                 # safe configuration template
 ```
-due_process/
-  models.py          data model (commitments, logs, ledger, violations, ...)
-  corpus.py          legal grounding corpus (IDEA CFR / U.S.C. / case law)
-  ledger.py          deterministic promised-vs-delivered minutes math
-  materiality.py     material-failure rule + violation detection + comp estimate
-  deadlines.py       filing-deadline clock: 1-yr state complaint + 2-yr due process
-  pwn.py             Prior Written Notice 7-element checklist (34 CFR 300.503(b))
-  grounding.py       evidence-by-ID; rejects ungrounded claims
-  analysis.py        the deterministic pipeline the agent calls per commitment
-  agent.py           Track 4 orchestrator with human-in-the-loop checkpoints
-  privacy.py         direct-identifier redaction before text cloud calls
-  ingest.py          real-document ingestion (CSV/PDF logs, Qwen-vision IEP)
-  store.py           SQLite case store + the deadline guard (alerts/agenda)
-  filing.py          per-state filing guidance + human-review evidence packet
-  systemic.py        de-identified, k-anonymous cross-family aggregation
-  scenarios.py       synthetic scenarios with ground-truth labels
-  llm/               bounded LLM layer (client + classification/extraction/narrative)
-  instruments/       fixed cited templates + the human approval gate
-  evaluation/        labeled dataset + metrics + grounded-vs-baseline runner
-  examples/          runnable demos
-```
 
-## Built for real records, not just clean demos
+## Configuration
 
-The features that move it from "correct engine on synthetic data" to "a parent or
-advocate can run it on a real child's actual records":
+| Variable | Required | Purpose |
+|---|:---:|---|
+| `DASHSCOPE_API_KEY` | For live Qwen | Qwen Cloud authentication |
+| `DUE_PROCESS_LLM_BASE_URL` | No | Model Studio endpoint override |
+| `DUE_PROCESS_ORCHESTRATOR_MODEL` | No | Narrative/orchestration model |
+| `DUE_PROCESS_WORKHORSE_MODEL` | No | Extraction and classification model |
+| `DUE_PROCESS_VISION_MODEL` | No | Scanned-image model |
+| `DUE_PROCESS_FUNCTION_URL` | Only for FC action | Function Compute trigger |
+| `DUE_PROCESS_API_TOKEN` | Only for custom FC requests | Bearer authentication |
+| `DUE_PROCESS_OSS_*` | No | Optional, approval-gated private storage |
 
-- **Privacy-minimizing text path** (`privacy.py`) — known direct identifiers are
-  redacted before text reaches a cloud model. Automated redaction is not a FERPA
-  compliance guarantee: users must upload only synthetic or already-de-identified
-  records to the public demo. Cloud vision requires an explicit redaction/synthetic
-  attestation because output-only redaction cannot protect the input image.
-- **Ingests what people actually have** (`ingest.py`) — service logs from CSV/TSV
-  (with fuzzy header mapping and status inference), text from PDFs, and **scanned
-  IEPs read by Qwen's vision model**.
-- **A year-round tool with a deadline guard** (`store.py` + `deadlines.py`) — a
-  SQLite case store that remembers across the year and surfaces an *agenda*: what's
-  material, what the records show, and which deadline is approaching. It tracks the two
-  *different* clocks correctly — a **1-year** window for a state complaint (34
-  C.F.R. 300.153(c)) vs. **2 years** for due process (20 U.S.C. 1415) — a trap
-  that otherwise makes parents miss the real, shorter deadline.
-- **Make-up reconciliation** (`ledger.py`) — when the school makes up a missed
-  session, that entry is reconciled and drops out of the current estimated
-  service shortfall.
-- **Human-review packet** (`filing.py`) — per-state filing guidance plus an exported
-  **evidence packet**: the complaint, a numbered exhibit index (the IEP line + the
-  exact log entries), and the cited authorities, ready for human review.
+Copy [`.env.example`](.env.example) to `.env`; never commit `.env` or cloud
+credentials. Production secrets belong in the deployment platform's encrypted
+environment-variable store.
 
-## Not legal advice
+## Deployment
 
-This is information and drafting support, not legal advice. A human approves every
-action. Legal specifics use federal defaults and must be localized and verified
-against your state's special-education regulations before reliance.
+### Render presentation layer
 
-The early discovery brief is retained as an explicitly archived artifact; current
-product claims and behavior are documented here and in `docs/`.
+[`render.yaml`](render.yaml) defines the public Streamlit service, Python runtime,
+build command, model roles, and `/_stcore/health` check. Connect the repository as
+a Render Blueprint and configure the secret values requested by the Blueprint.
+
+### Alibaba Cloud Function Compute
+
+[`deploy/`](deploy/) contains the Python 3.10 handler, Serverless Devs definition,
+build script, and safe sample requests. The boundary is enforced server-side:
+
+- an empty unauthenticated request can run only the synthetic proof case;
+- custom de-identified inputs require a Bearer token;
+- evidence storage additionally requires an explicit approval flag; and
+- stored bytes return a SHA-256 receipt.
+
+See [the deployment guide](deploy/README.md) and the
+[sanitized verified invocation](docs/DEPLOYMENT_PROOF.md).
+
+## Why Due Process is different
+
+| Capability | Generic chatbot | IEP meeting-prep tool | Due Process |
+|---|:---:|:---:|:---:|
+| Reconciles months of delivery records | ⚠️ prompt-dependent | ⚠️ varies | ✅ deterministic |
+| Requires confirmation of extracted commitments | ❌ | ⚠️ | ✅ |
+| Escalates ambiguous reasons to a human | ❌ | ⚠️ | ✅ |
+| Grounds findings to exact log rows | ❌ | ⚠️ | ✅ |
+| Restricts citations to a controlled corpus | ❌ | ⚠️ | ✅ |
+| Tracks separate filing clocks | ❌ | ⚠️ | ✅ |
+| Reconciles make-up services | ❌ | ⚠️ | ✅ |
+| Blocks every outbound action by default | ❌ | ⚠️ | ✅ |
+| Publishes a reproducible false-positive evaluation | ❌ | ❌ | ✅ |
+| Supports privacy-gated cohort pattern review | ❌ | ❌ | ✅ |
+
+The novelty is the combination: **bounded language intelligence + deterministic
+evidence accounting + source-level provenance + explicit human control.**
+
+## Documentation
+
+Start with the [documentation index](docs/README.md), then use:
+
+- [Architecture and trust boundaries](docs/architecture.md)
+- [Redacted live-demo case](docs/REDACTED_DEMO_CASE.md)
+- [Two-person video script](docs/TWO_PERSON_DEMO_SCRIPT.md)
+- [Devpost submission copy](docs/SUBMISSION.md)
+- [Product strategy](docs/PRODUCT_STRATEGY.md)
+- [Alibaba deployment proof](docs/DEPLOYMENT_PROOF.md)
+- [Security policy](SECURITY.md)
+
+## Safety and scope
+
+Due Process is information, record-review, and drafting support—not legal advice.
+Its threshold is a product screening signal, not a legal conclusion. Federal
+defaults and controlled authorities must be localized and reviewed by a qualified
+person before reliance. Automated redaction is not a FERPA compliance guarantee;
+the public demo must receive only synthetic or already-de-identified records.
+
+## Roadmap
+
+- advocate-labeled validation under an approved de-identification protocol
+- state-specific authority modules reviewed by qualified local experts
+- short-lived Alibaba Cloud identities instead of long-lived deployment keys
+- accessibility and adversarial privacy testing
+- case-management integrations behind the same explicit approval contract
+
+## License
+
+[Apache License 2.0](LICENSE) © 2026 Due Process contributors.
+
+---
+
+**Built for the Global AI Hackathon Series with Qwen Cloud.**
+
+*Due Process turns service records into evidence a human can verify, act on, and
+defend.*

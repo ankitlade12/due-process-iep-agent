@@ -6,7 +6,7 @@ construction*: :func:`due_process.grounding` validates that every citation
 resolves to an entry here, so the model cannot assert a legal standard that is
 not in this corpus.
 
-Provenance (per the spec, ``idea1-iep-enforcement-agent.md``):
+Provenance (per the archived discovery brief, ``docs/archive/EARLY_DISCOVERY.md``):
   * CFR / U.S.C. sections were verified against the eCFR (ecfr.gov) and the
     Cornell Legal Information Institute (law.cornell.edu). ``verify_required`` is
     ``False`` for those.
