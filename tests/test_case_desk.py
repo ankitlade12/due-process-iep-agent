@@ -3,6 +3,7 @@
 import pytest
 
 from due_process.examples.case_desk import (
+    _inject_css,
     build_case_payload,
     build_run_payload,
     finalize_case_review,
@@ -21,6 +22,25 @@ from due_process.ingest import load_logs_csv
 from due_process.instruments.drafter import LetterContext
 from due_process.scenarios import compliant_speech
 from due_process.scenarios import worked_example_speech
+
+
+class _CssCapture:
+    def __init__(self):
+        self.css = ""
+
+    def markdown(self, body, **_kwargs):
+        self.css = body
+
+
+def test_sidebar_form_values_remain_legible_on_light_controls():
+    capture = _CssCapture()
+
+    _inject_css(capture)
+
+    assert '[data-testid="stSidebar"] input' in capture.css
+    assert "-webkit-text-fill-color: #172026 !important" in capture.css
+    assert '[data-testid="stFileUploaderDropzone"] *' in capture.css
+    assert '[data-testid="stDownloadButton"] button *' in capture.css
 
 
 

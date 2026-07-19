@@ -577,6 +577,43 @@ def _inject_css(st: Any) -> None:
         [data-testid="stSidebar"] * {
             color: #f8fafc !important;
         }
+        /*
+         * Safari honors the broad sidebar text rule inside BaseWeb controls.
+         * Give light form surfaces their own explicit foreground so entered
+         * values, placeholders, upload actions, and alert copy stay legible.
+         */
+        [data-testid="stSidebar"] input,
+        [data-testid="stSidebar"] textarea {
+            color: #172026 !important;
+            -webkit-text-fill-color: #172026 !important;
+            caret-color: var(--dp-teal-dark) !important;
+            opacity: 1 !important;
+        }
+        [data-testid="stSidebar"] input::placeholder,
+        [data-testid="stSidebar"] textarea::placeholder {
+            color: #6b7b84 !important;
+            -webkit-text-fill-color: #6b7b84 !important;
+            opacity: 1 !important;
+        }
+        [data-testid="stSidebar"] [data-baseweb="input"] svg,
+        [data-testid="stSidebar"] [data-baseweb="textarea"] svg {
+            color: #50636e !important;
+            fill: #50636e !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stDownloadButton"] button,
+        [data-testid="stSidebar"] [data-testid="stDownloadButton"] button *,
+        [data-testid="stSidebar"] [data-testid="stFileUploader"] button,
+        [data-testid="stSidebar"] [data-testid="stFileUploader"] button *,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * {
+            color: #172026 !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stAlert"] * {
+            color: #3e3420 !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stExpander"] {
+            border-color: rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .07);
+        }
         [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
             line-height: 1.45;
         }
