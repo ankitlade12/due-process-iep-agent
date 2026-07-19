@@ -32,6 +32,7 @@ from due_process.examples.redacted_case import (
     REDACTED_CASE_IEP_TEXT,
     REDACTED_CASE_LOG_CSV,
     REDACTED_CASE_PERIODS,
+    REDACTED_CASE_PROVIDER_NOTE,
     REDACTED_CASE_SCHOOL,
     REDACTED_CASE_START,
     REDACTED_CASE_STUDENT,
@@ -1134,6 +1135,13 @@ def render_app() -> None:
                 data=REDACTED_CASE_LOG_CSV,
                 file_name="redacted-service-log-r104.csv",
                 mime="text/csv",
+                use_container_width=True,
+            )
+            st.download_button(
+                "Download supporting provider note",
+                data=REDACTED_CASE_PROVIDER_NOTE,
+                file_name="redacted-provider-note-r104.txt",
+                mime="text/plain",
                 use_container_width=True,
             )
         csv_upload = st.sidebar.file_uploader(

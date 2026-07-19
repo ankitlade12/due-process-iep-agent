@@ -17,3 +17,5 @@ REDACTED_CASE_IEP_TEXT = _DATA.joinpath(
     "redacted_iep_service.txt").read_text(encoding="utf-8").strip()
 REDACTED_CASE_LOG_CSV = _DATA.joinpath(
     "redacted_service_log.csv").read_text(encoding="utf-8")
+REDACTED_CASE_PROVIDER_NOTE = _DATA.joinpath(
+    "redacted_provider_note.txt").read_text(encoding="utf-8").strip()

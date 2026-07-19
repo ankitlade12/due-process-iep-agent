@@ -15,8 +15,9 @@ family, provider, school, or district information.
   session, individual, pull-out.`
 
 The app pre-fills these values after **Upload redacted case** is selected. Open
-the **Redacted demo case kit** panel, download the bundled CSV, upload that same
-file, confirm the de-identification attestation, and select **Start Qwen review**.
+the **Redacted demo case kit** panel, download the bundled CSV and supporting
+provider note, upload the CSV, confirm the de-identification attestation, and
+select **Start Qwen review**.
 
 ## Expected demonstration
 
@@ -27,10 +28,11 @@ The case contains 24 scheduled rows:
 - 4 clearly unexcused missed sessions / 120 minutes; and
 - 1 deliberately ambiguous entry: `See provider note`.
 
-Qwen should route the unclear entry to the human checkpoint. If the reviewer
-checks the source and classifies it as unexcused, the deterministic ledger shows
-a 150-minute unexcused gap out of 720 required minutes (20.8%). If it is marked
-excused, the verified gap remains 120 minutes (16.7%). Either path crosses the
-demo's 15% screening threshold; neither result is presented as a legal finding.
+Qwen should route the unclear entry to the human checkpoint. The reviewer then
+opens `redacted-provider-note-r104.txt`, which states that the provider was
+reassigned by the school and no substitute was available, and classifies the row
+as unexcused. The deterministic ledger shows a 150-minute unexcused gap out of
+720 required minutes (20.8%). The threshold is a screening signal, not a legal
+finding.
 
 The `SLP-07` provider value is a synthetic role label, not a person.

@@ -13,6 +13,7 @@ from due_process.examples.redacted_case import (
     REDACTED_CASE_IEP_TEXT,
     REDACTED_CASE_LOG_CSV,
     REDACTED_CASE_PERIODS,
+    REDACTED_CASE_PROVIDER_NOTE,
     REDACTED_CASE_START,
     REDACTED_CASE_STUDENT,
 )
@@ -63,6 +64,8 @@ def test_packaged_redacted_case_exercises_upload_and_human_review():
     assert len(logs) == 24
     assert len(ambiguities) == 1
     assert ambiguities[0]["reason"] == "See provider note"
+    assert "assessment coverage" in REDACTED_CASE_PROVIDER_NOTE
+    assert "no substitute provider" in REDACTED_CASE_PROVIDER_NOTE
 
     commitment = review.commitment
     payload = finalize_case_review(
