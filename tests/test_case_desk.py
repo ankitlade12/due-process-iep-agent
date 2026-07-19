@@ -8,6 +8,15 @@ from due_process.examples.case_desk import (
     finalize_case_review,
     prepare_case_review,
 )
+from due_process.examples.redacted_case import (
+    REDACTED_CASE_END,
+    REDACTED_CASE_IEP_TEXT,
+    REDACTED_CASE_LOG_CSV,
+    REDACTED_CASE_PERIODS,
+    REDACTED_CASE_START,
+    REDACTED_CASE_STUDENT,
+)
+from due_process.ingest import load_logs_csv
 from due_process.instruments.drafter import LetterContext
 from due_process.scenarios import compliant_speech
 from due_process.scenarios import worked_example_speech
@@ -32,6 +41,46 @@ def test_case_desk_payload_keeps_draft_and_audit():
     assert "State Complaint" in payload["draft"]["text"]
     assert payload["audit"]
     assert "Parsed 1 commitment" in payload["audit"][0]
+
+
+def test_packaged_redacted_case_exercises_upload_and_human_review():
+    logs = load_logs_csv(
+        REDACTED_CASE_LOG_CSV,
+        "uploaded-service",
+        source_uri="uploaded://service-log.csv",
+    )
+    review = prepare_case_review(
+        iep_text=REDACTED_CASE_IEP_TEXT,
+        logs=logs,
+        window_start=REDACTED_CASE_START,
+        window_end=REDACTED_CASE_END,
+        instructional_periods=REDACTED_CASE_PERIODS,
+        context=LetterContext(student_name=REDACTED_CASE_STUDENT),
+        use_qwen=False,
+    )
+
+    ambiguities = review.ambiguity_rows()
+    assert len(logs) == 24
+    assert len(ambiguities) == 1
+    assert ambiguities[0]["reason"] == "See provider note"
+
+    commitment = review.commitment
+    payload = finalize_case_review(
+        review,
+        service_type=commitment.service_type.value,
+        frequency_count=commitment.frequency_count,
+        frequency_period=commitment.frequency_period.value,
+        duration_minutes=commitment.duration_minutes,
+        setting=commitment.setting.value,
+        location=(commitment.location.value if commitment.location else ""),
+        ambiguity_decisions={ambiguities[0]["id"]: "unexcused"},
+    )
+
+    assert payload["ledger"]["required_minutes"] == 720
+    assert payload["ledger"]["delivered_minutes"] == 480
+    assert payload["ledger"]["unexcused_minutes"] == 150
+    assert payload["ledger"]["shortfall_pct"] == "20.8%"
+    assert payload["deterministic"]["material"] is True
 
 
 def test_case_desk_handles_uploaded_compliant_case_without_false_claim():

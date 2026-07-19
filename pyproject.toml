@@ -29,6 +29,9 @@ due-process = "due_process.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"due_process.examples" = ["data/*.csv", "data/*.txt"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

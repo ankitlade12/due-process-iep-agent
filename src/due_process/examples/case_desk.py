@@ -26,6 +26,16 @@ from due_process.agent import (
 )
 from due_process.analysis import analyze_commitment
 from due_process.cloud_action import FunctionComputeArtifactClient
+from due_process.examples.redacted_case import (
+    REDACTED_CASE_DISTRICT,
+    REDACTED_CASE_END,
+    REDACTED_CASE_IEP_TEXT,
+    REDACTED_CASE_LOG_CSV,
+    REDACTED_CASE_PERIODS,
+    REDACTED_CASE_SCHOOL,
+    REDACTED_CASE_START,
+    REDACTED_CASE_STUDENT,
+)
 from due_process.filing import export_evidence_packet
 from due_process.ingest import load_logs_csv
 from due_process.instruments.drafter import LetterContext, draft_systemic_complaint
@@ -1096,20 +1106,36 @@ def render_app() -> None:
     csv_upload = None
     if upload_mode:
         st.sidebar.markdown("**Redacted case details**")
-        student_name = st.sidebar.text_input("Student label", "Student A")
-        school_name = st.sidebar.text_input("School label", "Example School")
-        district_name = st.sidebar.text_input("District label", "Example District")
+        student_name = st.sidebar.text_input(
+            "Student label", REDACTED_CASE_STUDENT)
+        school_name = st.sidebar.text_input(
+            "School label", REDACTED_CASE_SCHOOL)
+        district_name = st.sidebar.text_input(
+            "District label", REDACTED_CASE_DISTRICT)
         state = st.sidebar.text_input("State code", "", max_chars=2).upper()
         periods = st.sidebar.number_input(
-            "Instructional periods", min_value=1, max_value=60, value=36)
+            "Instructional periods", min_value=1, max_value=60,
+            value=REDACTED_CASE_PERIODS)
         window_start = st.sidebar.date_input(
-            "Window start", date(TODAY.year - 1, 9, 1))
-        window_end = st.sidebar.date_input("Window end", TODAY)
+            "Window start", REDACTED_CASE_START)
+        window_end = st.sidebar.date_input(
+            "Window end", REDACTED_CASE_END)
         iep_input = st.sidebar.text_area(
             "IEP services text",
-            "Speech-Language Therapy: 3 x 30 minutes per week, individual, pull-out.",
-            height=110,
+            REDACTED_CASE_IEP_TEXT,
+            height=145,
         )
+        with st.sidebar.expander("Redacted demo case kit", expanded=True):
+            st.caption(
+                "Fully synthetic and de-identified. Download this service log, "
+                "then upload it below to exercise the real intake path.")
+            st.download_button(
+                "Download redacted service log",
+                data=REDACTED_CASE_LOG_CSV,
+                file_name="redacted-service-log-r104.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
         csv_upload = st.sidebar.file_uploader(
             "Service log CSV", type=["csv", "tsv"])
         if csv_upload is not None:

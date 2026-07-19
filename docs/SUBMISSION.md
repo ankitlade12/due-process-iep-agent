@@ -113,8 +113,9 @@ a successful model result.
 record across months.”
 
 **0:20–0:55 — Live input.** In the case desk, choose **Upload redacted case**, paste
-the service line, upload the sample CSV, and run the live Qwen review. Correct one
-extracted field, confirm it, and resolve one deliberately ambiguous log reason.
+the pre-filled service line, download and re-upload the bundled redacted sample
+CSV, and run the live Qwen review. Confirm the extracted fields, then resolve the
+deliberately ambiguous `See provider note` log reason.
 
 **0:55–1:25 — Boundary.** Show actual Qwen call provenance beside the deterministic
 ledger. Point out any fallback honestly. Say: “Qwen interprets language; it never

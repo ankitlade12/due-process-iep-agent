@@ -130,6 +130,11 @@ streamlit run src/due_process/examples/case_desk.py
 uv run --extra dev pytest
 ```
 
+For the public upload workflow, use the packaged
+[redacted live-demo case](docs/REDACTED_DEMO_CASE.md). The app pre-fills its
+de-identified case details and provides the matching service-log CSV as a
+download inside the sidebar.
+
 Or use the installed CLI on real files:
 
 ```bash
