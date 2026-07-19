@@ -5,7 +5,7 @@
 #   export DASHSCOPE_API_KEY=...      # rotated Qwen Cloud key
 #   ./build.sh              # bundle the due_process package + openai into ./dist
 #   s deploy
-#   s invoke                # runs the worked example; or: s invoke -e '{...}'
+#   s invoke -e '{}'        # runs the synthetic worked example
 #
 # Empty unauthenticated requests run the synthetic demo. To enable custom-case
 # requests later, configure DUE_PROCESS_API_TOKEN in Function Compute. Optional
@@ -34,7 +34,7 @@ resources:
       diskSize: 512
       code: ./dist
       environmentVariables:
-        DASHSCOPE_API_KEY: ${env.DASHSCOPE_API_KEY}
+        DASHSCOPE_API_KEY: ${env('DASHSCOPE_API_KEY')}
         # qwen3.7-plus everywhere in the deployed function: fast and reliable
         # within the request timeout (qwen3.7-max reasoning latency can exceed it).
         DUE_PROCESS_ORCHESTRATOR_MODEL: qwen3.7-plus

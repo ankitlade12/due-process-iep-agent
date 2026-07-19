@@ -37,7 +37,7 @@ export DASHSCOPE_API_KEY="ROTATED_VALUE"
 cd deploy
 ./build.sh
 s deploy
-s invoke
+s invoke -e '{}'
 ```
 
 OSS is optional. To enable approval-gated storage later, configure
@@ -50,7 +50,7 @@ custom de-identified case requests, generate a long random value and configure i
 as `DUE_PROCESS_API_TOKEN` on the deployed function; callers must send the same
 value as a Bearer token.
 
-The empty invocation returns a synthetic draft plus actual-call provenance. It
+The empty JSON invocation returns a synthetic draft plus actual-call provenance. It
 does not infer “Qwen online” merely because a key exists.
 
 Set the deployed trigger URL on the Streamlit host (not inside Function Compute):
