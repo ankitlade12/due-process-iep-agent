@@ -29,7 +29,8 @@ credential or student record is visible.
 
 - [ ] Rotate every credential exposed during development; review usage logs.
 - [ ] `uv run --extra dev pytest` passes on a clean checkout.
-- [ ] `python -m due_process.evaluation.run_eval --offline` matches README metrics.
+- [ ] `python -m due_process.evaluation.run_eval --offline` reports policy
+  regression scope and does not present synthetic results as accuracy metrics.
 - [ ] Live Qwen path is recorded once; fallback is labeled honestly if it occurs.
 - [ ] Live Function Compute synthetic request reports at least one successful
   Qwen call and no hidden fallback.

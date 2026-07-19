@@ -1,10 +1,10 @@
-"""Deterministic materiality rule, violation detection, and comp-time estimate.
+"""Deterministic review-screening rule, finding detection, and comp-time estimate.
 
-A shortfall is only actionable when the failure to implement the IEP is
-*material* (Van Duyn v. Baker Sch. Dist.). That judgment is encoded here as a
-**transparent, configurable rule** — not a model guess. The rule fires when the
-unexcused shortfall crosses a documented percentage of required minutes over the
-window, or when there is a run of consecutive unexcused missed sessions.
+The Ninth Circuit's *Van Duyn* opinion discusses material failure to implement an
+IEP, but it does not create this product's percentage or consecutive-session
+thresholds. Those values are a **transparent, configurable screening policy**—not
+a legal test or model judgment. Crossing a threshold means "escalate for human
+review," not "a violation occurred."
 
 Everything in this module is deterministic and unit-tested. The LLM never
 decides materiality; at most it narrates the already-decided result into the

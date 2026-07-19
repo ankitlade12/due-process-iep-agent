@@ -4,7 +4,7 @@
 [![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-bounded%20AI-6F4AFF.svg)](https://www.alibabacloud.com/en/product/modelstudio)
 [![Render](https://img.shields.io/badge/Render-live-46E3B7.svg?logo=render&logoColor=111111)](https://due-process-iep-evidence.onrender.com)
 [![CI](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen.svg)](#reproducible-proof)
+[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen.svg)](#reproducible-engineering-verification)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 > **An IEP says what a school promised. Due Process shows what the records prove—and keeps every next step under human control.**
@@ -290,7 +290,7 @@ python -m due_process.examples.vision_demo
 # Privacy-gated cohort pattern demo
 python -m due_process.examples.systemic_demo
 
-# Reproducible grounded-vs-baseline evaluation
+# Synthetic policy-regression verification
 python -m due_process.evaluation.run_eval --offline
 ```
 
@@ -302,13 +302,13 @@ due-process analyze --logs service_log.csv --service speech --freq 3 \
   --packet complaint_packet.txt
 ```
 
-## Reproducible proof
+## Reproducible engineering verification
 
 ```bash
 # Full offline suite
 uv run --extra dev pytest
 
-# Stable evaluation
+# Constructed policy-regression scenarios
 python -m due_process.evaluation.run_eval --offline --json
 
 # Public deployment health
@@ -321,22 +321,26 @@ Current verified result:
 156 passed
 ```
 
-The included offline evaluation compares the grounded pipeline with an ungrounded
-heuristic baseline:
+The included offline command is a regression suite, not a performance benchmark:
 
-| Metric | Grounded pipeline | Offline baseline |
-|---|---:|---:|
-| Precision | 1.00 | 0.78 |
-| Recall | 1.00 | 1.00 |
-| False-positive rate | **0.00** | 0.50 |
-| Citation accuracy | **1.00** | 0.00 |
-| Compensatory-minutes MAE | **0.0** | n/a |
+| Check | Scope | Current result |
+|---|---|---|
+| Policy implementation | 11 constructed cases labeled from the declared screening rule | 11/11 outputs match the encoded policy |
+| Citation-ID integrity | Emitted authority IDs must exist in the controlled corpus | All emitted IDs resolve |
+| Shortfall arithmetic | Computed minutes vs. expected values generated from the same synthetic facts | 0-minute accounting difference |
+| Over-flagging contrast | Deliberately naive no-threshold fixture | Exercises two known over-flag cases |
 
-Most evaluation labels are synthetic and constructed around the product's own
-screening rule. These numbers demonstrate repeatability and contrast with the
-baseline; they do not establish legal validity. One scenario has an independent
-court-derived anchor from *Van Duyn*. Advocate-labeled, de-identified validation
-remains future work.
+These are software-consistency assertions. We deliberately do **not** report
+precision, recall, false-positive rate, “citation accuracy,” or legal-outcome
+performance from this set: all 11 cases are synthetic, the labels encode the
+product's own rule, and the contrast fixture is intentionally weak. One synthetic
+scenario is informed by the math-instruction discussion in
+[*Van Duyn v. Baker School District 5J*](https://cdn.ca9.uscourts.gov/datastore/opinions/2007/09/05/0535181.pdf),
+but it is not a reconstruction or an independent court-labeled example.
+
+Real performance claims require a representative, advocate-labeled,
+de-identified dataset collected under an approved protocol. That validation has
+not been completed.
 
 ## Project structure
 
@@ -351,7 +355,7 @@ due-process-iep-agent/
 │   ├── filing.py                # evidence packet export
 │   ├── systemic.py              # privacy-gated cohort signals
 │   ├── llm/                     # bounded Qwen tasks and local fallbacks
-│   ├── evaluation/              # labeled cases, baseline, and metrics
+│   ├── evaluation/              # synthetic policy regression and contrast fixtures
 │   ├── instruments/             # fixed drafts and approval contracts
 │   └── examples/                # Streamlit desk and runnable demos
 ├── deploy/                      # Function Compute handler and Serverless Devs spec
@@ -412,7 +416,7 @@ See [the deployment guide](deploy/README.md) and the
 | Tracks separate filing clocks | ❌ | ⚠️ | ✅ |
 | Reconciles make-up services | ❌ | ⚠️ | ✅ |
 | Blocks every outbound action by default | ❌ | ⚠️ | ✅ |
-| Publishes a reproducible false-positive evaluation | ❌ | ❌ | ✅ |
+| Separates regression checks from external validation claims | ❌ | ⚠️ | ✅ |
 | Supports privacy-gated cohort pattern review | ❌ | ❌ | ✅ |
 
 The novelty is the combination: **bounded language intelligence + deterministic

@@ -1,9 +1,11 @@
-"""A labeled synthetic dataset for the material-failure detection eval.
+"""Constructed scenarios for deterministic policy-regression verification.
 
 Each case is constructed with an explicit expected review-signal label (yes/no)
-and an expected shortfall-minutes figure. Most cases intentionally encode the
-product policy and therefore test implementation consistency, not independent
-legal validity. One court-derived scenario provides a limited external anchor.
+and an expected shortfall-minutes figure generated from the same declared facts.
+The cases intentionally encode the product policy and therefore test
+implementation consistency, not model accuracy or independent legal validity.
+One synthetic scenario is inspired by facts discussed in a published opinion;
+it is not a reconstruction of that record or an independently labeled example.
 Unexcused sessions are spread (never adjacent) unless a case is specifically
 testing the consecutive-sessions rule.
 """
@@ -34,8 +36,8 @@ _START = date(2025, 9, 2)
 class EvalCase:
     """One labeled scenario for the eval.
 
-    ``provenance`` distinguishes the case whose label has an independent court
-    anchor from synthetic policy-consistency cases.
+    ``provenance`` distinguishes a source-informed synthetic case from the other
+    constructed policy cases. Every case in this module remains synthetic.
     """
 
     name: str
@@ -47,7 +49,7 @@ class EvalCase:
     label_material: bool
     label_comp_minutes: int
     notes: str = ""
-    provenance: str = "synthetic"
+    provenance: str = "synthetic_policy_case"
 
 
 def _session_date(index: int, freq: int) -> date:
@@ -90,7 +92,7 @@ def _build_case(
     periods: int = 36,
     service: ServiceType = ServiceType.SPEECH_LANGUAGE,
     notes: str = "",
-    provenance: str = "synthetic",
+    provenance: str = "synthetic_policy_case",
 ) -> EvalCase:
     required = freq * periods
     labels: List[str] = [""] * required
@@ -191,11 +193,12 @@ def build_dataset() -> List[EvalCase]:
                     delivered=40, excused=5, unexcused=27, freq=2,
                     service=ServiceType.OCCUPATIONAL_THERAPY,
                     notes="OT, 2x/week, 37.5% unexcused."),
-        _build_case("van_duyn_tutoring", label_material=True,
+        _build_case("source_informed_math_shortfall", label_material=True,
                     delivered=54, excused=0, unexcused=54,
                     service=ServiceType.SPECIALIZED_INSTRUCTION,
-                    notes="~50% of specialized instruction delivered; in Van "
-                          "Duyn the court held a 50% tutoring shortfall material.",
-                    provenance="documented: Van Duyn v. Baker Sch. Dist. 5J, "
-                               "502 F.3d 811 (9th Cir. 2007)"),
+                    notes="Synthetic 50% math-instruction shortfall inspired "
+                          "by the initial shortfall discussed in Van Duyn; not "
+                          "a reconstruction of the case record.",
+                    provenance="synthetic_source_informed: Van Duyn v. Baker "
+                               "Sch. Dist. 5J, 502 F.3d 811 (9th Cir. 2007)"),
     ]

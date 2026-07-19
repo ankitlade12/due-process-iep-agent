@@ -60,23 +60,22 @@ The Function Compute response reports successful and failed Qwen calls, task
 methods, request IDs when available, latency, and fallback reasons. Having a key
 configured is never presented as proof that Qwen completed the task.
 
-## Reproducible evaluation
+## Reproducible engineering verification
 
 `python -m due_process.evaluation.run_eval --offline`
 
-| metric | grounded | offline heuristic baseline |
-|---|---:|---:|
-| precision | 1.00 | 0.78 |
-| recall | 1.00 | 1.00 |
-| false-positive rate | 0.00 | 0.50 |
-| citation-ID accuracy | 1.00 | 0.00 |
-| compensatory-minutes MAE | 0.0 | n/a |
+This command runs 11 constructed policy-regression cases. It checks that the
+implementation matches the declared screening rule, emitted authority IDs resolve
+inside the controlled corpus, and shortfall arithmetic matches the generated
+scenario facts. A deliberately over-flagging fixture exercises known failure
+modes; it is not a competitive baseline.
 
-This is an 11-case engineering evaluation: seven positive labels, four negative,
-and one scenario anchored to a published court holding. The other labels are
-synthetic and encode the product's review policy. It tests consistency and
-provenance, not legal validity, real-world accuracy, or case outcomes. `--online`
-is a separate, variable raw-Qwen comparison.
+We do not claim precision, recall, false-positive rate, citation accuracy, or
+legal-outcome performance from this set. Every case is synthetic and labeled from
+the product rule. One case is source-informed by *Van Duyn*, but it is not a
+reconstruction or independent court-labeled example. A representative,
+advocate-labeled, de-identified validation set remains future work. `--online` is
+an exploratory, variable raw-Qwen contrast—not a benchmark.
 
 ## Safety and privacy
 
@@ -130,8 +129,8 @@ external action remains held. Then show a live synthetic Function Compute respon
 with successful Qwen provenance and its request ID. If optional OSS is configured,
 also show the separate storage approval and matching SHA-256 receipt.
 
-**2:20–2:40 — Evaluation.** Run the offline benchmark and state its limitations in
-one sentence.
+**2:20–2:40 — Verification.** Run the synthetic policy-regression check and state
+plainly that it verifies implementation consistency, not real-world accuracy.
 
 **2:40–3:00 — Proof and close.** Show Function Compute in Alibaba Workbench, the
 public repository, architecture, and passing CI. “Receipts over rhetoric: a

@@ -1,16 +1,16 @@
-"""The baseline: violation detection with no ledger and no grounding corpus.
+"""Contrast fixtures for exercising known failure modes.
 
-This is the contrast that makes the grounded system's numbers mean something.
-Two baselines share an interface:
+These fixtures are not independent benchmarks and must not be used to claim
+real-world superiority. They are deliberately limited so the regression suite can
+verify that thresholding and citation-ID controls prevent specific known errors.
+Two fixtures share an interface:
 
-  * ``HeuristicBaseline`` — offline, reproducible. It flags a material failure
+  * ``HeuristicBaseline`` — offline, reproducible. It deliberately flags a failure
     whenever there is *any* unexcused shortfall (no threshold) and cites law the
-    ungrounded way a naive tool would, which does not validate. It exists to make
-    the eval runnable with no key while still demonstrating the failure modes the
-    grounding layer fixes: over-flagging (high FPR) and unverifiable citations.
-  * ``QwenBaseline`` — raw Qwen prompted to judge material failure and cite the
-    law from memory, with no deterministic ledger and no corpus. Used when a key
-    is configured.
+    ungrounded way a naive tool would. It is an adversarial contrast fixture, not
+    a representative competing system.
+  * ``QwenBaseline`` — an optional exploratory raw-Qwen call with no ledger or
+    corpus. Its outputs vary and are not a published benchmark.
 """
 
 from __future__ import annotations
@@ -56,9 +56,9 @@ class BaselinePrediction:
 
 
 class HeuristicBaseline:
-    """Offline baseline: no materiality threshold, no grounding."""
+    """Deliberately over-flagging fixture: no threshold and no grounding."""
 
-    name = "heuristic (no ledger, no grounding)"
+    name = "over-flagging contrast fixture (no threshold or grounding)"
     available = True
 
     def predict(self, case: EvalCase) -> BaselinePrediction:
@@ -83,9 +83,9 @@ _SYSTEM = (
 
 
 class QwenBaseline:
-    """Online baseline: raw Qwen, no ledger, no corpus."""
+    """Exploratory raw-Qwen contrast: no ledger and no corpus."""
 
-    name = "raw Qwen (no ledger, no grounding)"
+    name = "exploratory raw Qwen contrast (no ledger or grounding)"
 
     def __init__(self, client: LLMClient):
         self.client = client
@@ -116,7 +116,7 @@ class QwenBaseline:
 
 
 def get_baseline(client: Optional[LLMClient]):
-    """Qwen baseline when a key is available, else the offline heuristic."""
+    """Return the exploratory Qwen or offline contrast fixture."""
     if client is not None and client.available:
         return QwenBaseline(client)
     return HeuristicBaseline()

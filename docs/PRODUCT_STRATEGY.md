@@ -53,7 +53,7 @@ evaluation discipline:
 - advocate-reviewed ambiguity labels;
 - state-specific, expert-reviewed procedural modules;
 - source-linked outcome feedback;
-- reproducible false-positive and provenance metrics; and
+- reproducible policy-regression and provenance-integrity checks; and
 - transparent adapters that organizations can self-host.
 
 ## Success measures after the hackathon

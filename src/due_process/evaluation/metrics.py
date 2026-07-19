@@ -1,13 +1,10 @@
-"""Metrics for the evaluation.
+"""Generic metrics used by the policy-regression verification.
 
-The numbers that matter most for this product:
-
-  * **False-positive rate** — telling a parent they have a case when they do not
-    is the worst failure, so it is reported prominently.
-  * **Citation accuracy** — the share of cited authorities that actually resolve
-    to a real provision in the corpus (a hallucinated cite is worse than none).
-  * Precision / recall / F1 on material-failure detection, and
-  * mean absolute error on compensatory minutes.
+Binary classification helpers remain useful for testing constructed cases, but
+their output is not a real-world performance estimate unless labels come from an
+independent representative sample. Citation checks in this module measure only
+whether an internal authority ID resolves; they do not establish legal relevance
+or correctness.
 """
 
 from __future__ import annotations
@@ -74,7 +71,11 @@ def citation_validity(cited_ids: Sequence[str]) -> tuple[int, int]:
     return valid, total
 
 
-def citation_accuracy(cited_ids: Sequence[str]) -> float:
+def citation_id_resolution_rate(cited_ids: Sequence[str]) -> float:
+    """Fraction of internal citation IDs present in the controlled corpus.
+
+    This is a referential-integrity check, not a measurement of legal accuracy.
+    """
     valid, total = citation_validity(cited_ids)
     return valid / total if total else 0.0
 

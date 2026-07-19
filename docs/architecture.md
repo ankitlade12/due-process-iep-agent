@@ -78,8 +78,9 @@ data only.
 ## Verification
 
 - `uv run --extra dev pytest` — offline unit and boundary tests.
-- `python -m due_process.evaluation.run_eval --offline` — stable benchmark.
+- `python -m due_process.evaluation.run_eval --offline` — synthetic policy
+  regression; verifies implementation consistency, not real-world accuracy.
 - `python -m due_process.evaluation.run_eval --online` — explicit live-Qwen
-  comparison; results are variable.
+  exploratory contrast; variable and not a benchmark.
 - `streamlit run src/due_process/examples/case_desk.py` — judge-facing workflow.
 - `deploy/handler.py` — authenticated Function Compute boundary and OSS action.

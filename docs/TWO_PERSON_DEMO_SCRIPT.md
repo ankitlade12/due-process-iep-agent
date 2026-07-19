@@ -32,9 +32,10 @@ show the packet download and keep storage explicitly labeled optional.
 
 ## 2:10–2:30 — Presenter A: proof
 
-Show the offline evaluation output, passing GitHub Actions check, public repository,
-and Alibaba Workbench Function Compute page. State the benchmark limitation:
-“Most cases are synthetic; this proves software consistency, not legal outcomes.”
+Show the policy-regression output, passing GitHub Actions check, public repository,
+and Alibaba Workbench Function Compute page. State the boundary plainly:
+“These constructed cases prove software consistency. We do not claim real-world
+accuracy until an independent advocate-labeled dataset exists.”
 
 ## 2:30–2:40 — Both: close
 

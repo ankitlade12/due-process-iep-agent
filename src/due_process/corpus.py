@@ -257,12 +257,12 @@ _PROVISIONS: List[LegalProvision] = [
         citation="Van Duyn ex rel. Van Duyn v. Baker Sch. Dist. 5J, 502 F.3d "
                  "811 (9th Cir. 2007)",
         kind=AuthorityKind.CASE,
-        governs="Material failure to implement standard",
-        agent_use="Basis for the materiality rule: a violation requires more "
-                  "than a minor discrepancy, and the proportion of services "
-                  "mandated to those provided is the crucial measure.",
-        url="https://www.courtlistener.com/opinion/1236582/"
-            "van-duyn-ex-rel-van-duyn-v-baker-school-dist-5j/",
+        governs="Ninth Circuit material-failure implementation standard",
+        agent_use="Supports review of whether implementation differed by more "
+                  "than a minor discrepancy. It does not establish this "
+                  "product's 15% or consecutive-session screening thresholds.",
+        url="https://cdn.ca9.uscourts.gov/datastore/opinions/2007/09/05/"
+            "0535181.pdf",
     ),
     LegalProvision(
         id="reid_v_dc",

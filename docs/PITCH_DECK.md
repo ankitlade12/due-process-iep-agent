@@ -30,8 +30,10 @@ Function Compute. Show Alibaba OSS and its SHA-256 receipt only when configured.
 
 ## 6. Evidence, not vanity metrics
 
-Show stable offline benchmark and its limitation: 11 cases, mostly synthetic,
-engineering validation only. Add passing tests/CI and the next validation cohort.
+Show the stable policy-regression check and its limitation: 11 constructed
+synthetic cases, including one source-informed scenario. Do not present it as
+accuracy, legal validation, or an independent benchmark. Add passing tests/CI and
+the next validation cohort.
 
 ## 7. Distribution and next milestone
 
