@@ -7,8 +7,7 @@ treat it as compromised. Revoke it in the provider console, create a new key,
 remove the exposed copy, and review provider audit/billing logs. Merely editing
 `.env` does not revoke a credential.
 
-Never commit `.env`. Use `.env.example` for variable names only. Use a separate,
-least-privilege OSS identity in production; do not reuse a broad deployment key.
+Never commit `.env`. Use `.env.example` for variable names only.
 
 ## Data policy
 
@@ -18,12 +17,12 @@ real image unless it was redacted before upload and you are authorized to proces
 it. Define retention, deletion, access logging, encryption, and incident-response
 policies before any real deployment.
 
-## API boundary
+## Application boundary
 
-The unauthenticated Function Compute route runs a synthetic example only. Custom
-records require a Bearer token configured through `DUE_PROCESS_API_TOKEN`. OSS
-storage additionally requires an explicit approval flag. Put the API behind HTTPS,
-rate limiting, monitoring, and a secret manager/API gateway for production.
+The public Streamlit workspace accepts synthetic or already-de-identified inputs
+and does not email, file, or upload its generated packet. Downloaded artifacts
+remain under the reviewer's control. Add authentication, retention controls,
+monitoring, rate limiting, and a secret manager before any private deployment.
 
 ## Reporting
 

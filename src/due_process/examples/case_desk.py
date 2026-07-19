@@ -25,7 +25,6 @@ from due_process.agent import (
     run_enforcement,
 )
 from due_process.analysis import analyze_commitment
-from due_process.cloud_action import FunctionComputeArtifactClient
 from due_process.examples.redacted_case import (
     REDACTED_CASE_DISTRICT,
     REDACTED_CASE_END,
@@ -1213,9 +1212,6 @@ def render_app() -> None:
         st.session_state.prepared_review = None
     if "approval_reviewed" not in st.session_state:
         st.session_state.approval_reviewed = False
-    if "artifact_result" not in st.session_state:
-        st.session_state.artifact_result = None
-
     action_col, mode_col, proof_col = st.columns([1.2, 1.0, 2.3])
     with action_col:
         run_qwen = st.button("Start Qwen review", type="primary", use_container_width=True)
@@ -1289,7 +1285,6 @@ def render_app() -> None:
                 )
 
             st.session_state.approval_reviewed = False
-            st.session_state.artifact_result = None
             st.session_state.run_payload = None
             try:
                 st.session_state.prepared_review = _run_payload_with_progress(
@@ -1567,8 +1562,7 @@ def render_app() -> None:
                         st.session_state.approval_reviewed = True
                     if st.session_state.approval_reviewed:
                         st.success(
-                            "Draft review recorded. External storage is now "
-                            "eligible for a separate explicit approval.")
+                            "Draft review recorded. No external action was taken.")
                     else:
                         st.warning("Outbound action remains blocked.")
                 elif checkpoint["resolved"]:
@@ -1576,60 +1570,9 @@ def render_app() -> None:
                 else:
                     st.warning("Awaiting human decision.")
 
-        if st.session_state.approval_reviewed and payload["draft"]["packet"]:
-            st.divider()
-            st.markdown("### Approval-gated Alibaba Cloud action")
-            st.caption(
-                "This stores the exact reviewed packet; it does not email or file "
-                "the draft. Function Compute re-checks authentication and approval.")
-            artifact_result = st.session_state.artifact_result
-            if artifact_result is None:
-                if FunctionComputeArtifactClient.is_configured():
-                    store_approved = st.button(
-                        "Approve and store packet in Alibaba OSS",
-                        type="primary",
-                        use_container_width=True,
-                    )
-                    if store_approved:
-                        try:
-                            with st.spinner(
-                                "Calling Function Compute and storing the approved packet..."):
-                                result = (
-                                    FunctionComputeArtifactClient.from_env()
-                                    .store_approved_packet(
-                                        payload["draft"]["packet"],
-                                        case_id=payload["run_id"],
-                                    )
-                                )
-                            st.session_state.artifact_result = result
-                            payload["audit"].extend(result.audit)
-                            artifact_result = result
-                        except (ValueError, RuntimeError) as exc:
-                            st.error(str(exc))
-                else:
-                    st.info(
-                        "Optional evidence storage is intentionally disabled in "
-                        "this public demo. The reviewed packet remains available "
-                        "for download, and the verified Function Compute deployment "
-                        "is documented separately for judges.")
-            if artifact_result is not None:
-                receipt = artifact_result.receipt
-                st.success("Approved evidence packet stored in Alibaba OSS.")
-                receipt_cols = st.columns(3)
-                receipt_cols[0].metric(
-                    "Provider", str(receipt.get("provider", "alibaba-oss")))
-                receipt_cols[1].metric(
-                    "Packet size", f"{int(receipt.get('size_bytes', 0)):,} bytes")
-                receipt_cols[2].metric(
-                    "Request ID", artifact_result.request_id or "returned")
-                st.code(str(receipt.get("uri", "")))
-                st.caption(
-                    f"SHA-256: {receipt.get('sha256', '')} · "
-                    f"Stored: {receipt.get('stored_at', '')}")
-
         st.caption(
-            "No email or filing action is automated; only the separately "
-            "approved evidence-storage action is available.")
+            "This workspace does not email, file, or upload the draft. Downloaded "
+            "packets remain under the reviewer's control.")
 
     with tabs[3]:
         st.markdown("### District-wide pattern")

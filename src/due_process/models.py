@@ -145,7 +145,7 @@ class SourceRef:
     kind: SourceKind
     locator: str = ""          # e.g. "p.7 §Services", "log row 42", "2026-03-04"
     description: str = ""       # human-readable summary of what is there
-    uri: str = ""              # clickable link (OSS object, eCFR URL, ...)
+    uri: str = ""              # clickable source link (eCFR URL, record URI, ...)
     record_id: str = ""        # id of the underlying ServiceLog/ServiceCommitment
 
     def cite(self) -> str:

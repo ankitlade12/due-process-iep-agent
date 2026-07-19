@@ -4,7 +4,7 @@
 [![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-bounded%20AI-6F4AFF.svg)](https://www.alibabacloud.com/en/product/modelstudio)
 [![Render](https://img.shields.io/badge/Render-live-46E3B7.svg?logo=render&logoColor=111111)](https://due-process-iep-evidence.onrender.com)
 [![CI](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen.svg)](#reproducible-engineering-verification)
+[![Tests](https://img.shields.io/badge/tests-145%20passing-brightgreen.svg)](#reproducible-engineering-verification)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 > **An IEP says what a school promised. Due Process shows what the records prove—and keeps every next step under human control.**
@@ -15,8 +15,8 @@ logs into a reconciled ledger, a source-grounded evidence packet, and a draft ne
 step for human review.
 
 Qwen handles narrow language tasks. Deterministic code owns the arithmetic,
-deadlines, policy threshold, and citation validation. No email, filing, or cloud
-storage action occurs without a separate human approval.
+deadlines, policy threshold, and citation validation. The public product never
+emails, files, or uploads a packet; downloaded output stays with the reviewer.
 
 Built for the **Global AI Hackathon Series with Qwen Cloud**, Track 4: Autopilot
 Agent.
@@ -37,8 +37,7 @@ Agent.
   or files it
 - **Privacy-gated case intake** — the public app accepts only synthetic or already
   de-identified records and includes a complete redacted demonstration kit
-- **Production proof** — public Render workspace, verified Qwen Cloud calls, and a
-  deployed Alibaba Cloud Function Compute backend
+- **Public product** — deployed Render workspace with verified Qwen Cloud calls
 
 ## Live deployment
 
@@ -47,13 +46,10 @@ Agent.
 | **Product workspace** | [due-process-iep-evidence.onrender.com](https://due-process-iep-evidence.onrender.com) | Public; synthetic/de-identified data only |
 | **Health check** | [/_stcore/health](https://due-process-iep-evidence.onrender.com/_stcore/health) | Public |
 | **Source repository** | [github.com/ankitlade12/due-process-iep-agent](https://github.com/ankitlade12/due-process-iep-agent) | Public |
-| **Alibaba deployment proof** | [Function Compute verification](docs/DEPLOYMENT_PROOF.md) | Sanitized request ID and Qwen provenance |
 
 The public presentation layer runs on Render. Live analysis uses Qwen Cloud for
-bounded extraction, classification, and narrative tasks. The repository also
-ships the verified Alibaba Cloud Function Compute deployment used to demonstrate
-the same guarded backend contract. Optional evidence storage is intentionally
-disabled in the public demo.
+bounded extraction, classification, and narrative tasks. Deterministic analysis
+and human-review gates run inside the application service.
 
 ## Sixty-second product tour
 
@@ -114,11 +110,6 @@ graph TB
         APPROVAL[Human approval checkpoints]
     end
 
-    subgraph "ALIBABA CLOUD PROOF"
-        FC[Function Compute backend]
-        OSS[(Optional private OSS storage)]
-    end
-
     USER --> UI
     UI --> QWEN
     QWEN --> EXTRACT
@@ -131,13 +122,9 @@ graph TB
     LEDGER --> GROUND
     CORPUS --> GROUND
     GROUND --> APPROVAL
-    APPROVAL -. explicit authenticated action .-> FC
-    FC -. optional .-> OSS
-
     style QWEN fill:#eee9ff,stroke:#6f4aff,stroke-width:2px
     style LEDGER fill:#fff4e1,stroke:#c56b00,stroke-width:2px
     style APPROVAL fill:#e8f5e9,stroke:#267455,stroke-width:2px
-    style FC fill:#e7f3ff,stroke:#176d8a,stroke-width:2px
 ```
 
 The central design rule is simple: **Qwen may interpret language, but it cannot
@@ -155,8 +142,6 @@ claim.
 | **Analysis core** | Custom deterministic Python engine | Ledger arithmetic, materiality screening, deadlines, make-up reconciliation |
 | **Grounding** | Controlled IDEA / CFR / U.S.C. / case-law corpus | Source resolution and claim publication gate |
 | **Local persistence** | SQLite | Case memory and deadline agenda |
-| **Cloud backend** | Alibaba Cloud Function Compute | Authenticated agent endpoint and deployment proof |
-| **Optional artifacts** | Alibaba Cloud OSS | Approval-gated evidence packet storage with SHA-256 receipt |
 | **Frontend deployment** | Render Blueprint | Public Streamlit service and health check |
 | **Testing** | pytest + GitHub Actions | Unit, integration, privacy, grounding, deployment, and evaluation coverage |
 
@@ -227,8 +212,7 @@ workspace that helps a human review the record faster and more consistently.
 - no automated email or filing action
 - direct-identifier redaction before text-model calls
 - no public aggregation below the configured k-anonymity threshold
-- authenticated custom requests on Function Compute
-- separate approval for optional artifact storage
+- reviewer-controlled packet downloads with no automated outbound action
 
 ## Deterministic core, bounded Qwen
 
@@ -318,7 +302,7 @@ curl https://due-process-iep-evidence.onrender.com/_stcore/health
 Current verified result:
 
 ```text
-156 passed
+145 passed
 ```
 
 The included offline command is a regression suite, not a performance benchmark:
@@ -358,8 +342,7 @@ due-process-iep-agent/
 │   ├── evaluation/              # synthetic policy regression and contrast fixtures
 │   ├── instruments/             # fixed drafts and approval contracts
 │   └── examples/                # Streamlit desk and runnable demos
-├── deploy/                      # Function Compute handler and Serverless Devs spec
-├── docs/                        # architecture, submission, proof, and demo guides
+├── docs/                        # public architecture and redacted demo guide
 ├── tests/                       # offline unit and integration suite
 ├── render.yaml                  # public Streamlit Blueprint
 ├── pyproject.toml               # package and dependency contract
@@ -375,9 +358,6 @@ due-process-iep-agent/
 | `DUE_PROCESS_ORCHESTRATOR_MODEL` | No | Narrative/orchestration model |
 | `DUE_PROCESS_WORKHORSE_MODEL` | No | Extraction and classification model |
 | `DUE_PROCESS_VISION_MODEL` | No | Scanned-image model |
-| `DUE_PROCESS_FUNCTION_URL` | Only for FC action | Function Compute trigger |
-| `DUE_PROCESS_API_TOKEN` | Only for custom FC requests | Bearer authentication |
-| `DUE_PROCESS_OSS_*` | No | Optional, approval-gated private storage |
 
 Copy [`.env.example`](.env.example) to `.env`; never commit `.env` or cloud
 credentials. Production secrets belong in the deployment platform's encrypted
@@ -390,19 +370,6 @@ environment-variable store.
 [`render.yaml`](render.yaml) defines the public Streamlit service, Python runtime,
 build command, model roles, and `/_stcore/health` check. Connect the repository as
 a Render Blueprint and configure the secret values requested by the Blueprint.
-
-### Alibaba Cloud Function Compute
-
-[`deploy/`](deploy/) contains the Python 3.10 handler, Serverless Devs definition,
-build script, and safe sample requests. The boundary is enforced server-side:
-
-- an empty unauthenticated request can run only the synthetic proof case;
-- custom de-identified inputs require a Bearer token;
-- evidence storage additionally requires an explicit approval flag; and
-- stored bytes return a SHA-256 receipt.
-
-See [the deployment guide](deploy/README.md) and the
-[sanitized verified invocation](docs/DEPLOYMENT_PROOF.md).
 
 ## Why Due Process is different
 
@@ -428,10 +395,6 @@ Start with the [documentation index](docs/README.md), then use:
 
 - [Architecture and trust boundaries](docs/architecture.md)
 - [Redacted live-demo case](docs/REDACTED_DEMO_CASE.md)
-- [Two-person video script](docs/TWO_PERSON_DEMO_SCRIPT.md)
-- [Devpost submission copy](docs/SUBMISSION.md)
-- [Product strategy](docs/PRODUCT_STRATEGY.md)
-- [Alibaba deployment proof](docs/DEPLOYMENT_PROOF.md)
 - [Security policy](SECURITY.md)
 
 ## Safety and scope
@@ -446,7 +409,7 @@ the public demo must receive only synthetic or already-de-identified records.
 
 - advocate-labeled validation under an approved de-identification protocol
 - state-specific authority modules reviewed by qualified local experts
-- short-lived Alibaba Cloud identities instead of long-lived deployment keys
+- organization-managed authentication and retention controls for private use
 - accessibility and adversarial privacy testing
 - case-management integrations behind the same explicit approval contract
 

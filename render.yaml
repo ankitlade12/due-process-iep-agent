@@ -1,5 +1,4 @@
-# Public presentation layer only. The required backend remains Alibaba Cloud
-# Function Compute; configure its trigger URL during Render Blueprint creation.
+# Public Streamlit workspace backed by Qwen Cloud.
 services:
   - type: web
     name: due-process-iep-evidence
@@ -20,8 +19,4 @@ services:
       - key: DUE_PROCESS_VISION_MODEL
         value: qwen3.7-plus
       - key: DASHSCOPE_API_KEY
-        sync: false
-      - key: DUE_PROCESS_FUNCTION_URL
-        sync: false
-      - key: DUE_PROCESS_API_TOKEN
         sync: false
