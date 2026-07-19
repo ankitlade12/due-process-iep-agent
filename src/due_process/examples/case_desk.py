@@ -1332,9 +1332,10 @@ def render_app() -> None:
                             st.error(str(exc))
                 else:
                     st.info(
-                        "Cloud storage is not configured on this app host. Set "
-                        "DUE_PROCESS_FUNCTION_URL and DUE_PROCESS_API_TOKEN after "
-                        "deploying Function Compute.")
+                        "Optional evidence storage is intentionally disabled in "
+                        "this public demo. The reviewed packet remains available "
+                        "for download, and the verified Function Compute deployment "
+                        "is documented separately for judges.")
             if artifact_result is not None:
                 receipt = artifact_result.receipt
                 st.success("Approved evidence packet stored in Alibaba OSS.")
