@@ -5,8 +5,9 @@ expected outcomes. They serve three callers:
 
   * the worked-example demo (:mod:`due_process.examples.worked_example`),
   * the deterministic-core unit tests, and
-  * the planned precision/recall evaluation, which needs exactly this — synthetic
-    pairs with ground-truth labels — to report metrics the incumbents do not.
+  * the synthetic policy-regression evaluation, which needs exactly this —
+    pairs with expected policy outcomes — to verify repeatable implementation
+    behavior without presenting the fixtures as a real-world benchmark.
 
 The flagship scenario reproduces the spec's worked example: 108 required speech
 sessions, 72 delivered, 12 excused absences, 24 unexcused → a 720-minute (22%)

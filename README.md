@@ -4,7 +4,7 @@
 [![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-bounded%20AI-6F4AFF.svg)](https://www.alibabacloud.com/en/product/modelstudio)
 [![Render](https://img.shields.io/badge/Render-live-46E3B7.svg?logo=render&logoColor=111111)](https://due-process-iep-evidence.onrender.com)
 [![CI](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-145%20passing-brightgreen.svg)](#reproducible-engineering-verification)
+[![Tests](https://img.shields.io/badge/tests-146%20passing-brightgreen.svg)](#reproducible-engineering-verification)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 > **An IEP says what a school promised. Due Process shows what the records prove—and keeps every next step under human control.**
@@ -82,8 +82,8 @@ flowchart LR
     D --> G[Grounding and deadline engine]
     G --> P[Evidence packet + draft]
     P --> H3{Human reviews next step}
-    H3 -->|Not approved| B[Outbound action blocked]
-    H3 -->|Separately approved| A[Authenticated adapter]
+    H3 --> DL[Reviewer-controlled packet download]
+    H3 --> B[Outbound action remains blocked]
 ```
 
 ### Runtime architecture
@@ -143,7 +143,7 @@ claim.
 | **Grounding** | Controlled IDEA / CFR / U.S.C. / case-law corpus | Source resolution and claim publication gate |
 | **Local persistence** | SQLite | Case memory and deadline agenda |
 | **Frontend deployment** | Render Blueprint | Public Streamlit service and health check |
-| **Testing** | pytest + GitHub Actions | Unit, integration, privacy, grounding, deployment, and evaluation coverage |
+| **Testing** | pytest + GitHub Actions | Unit, integration, privacy, grounding, workflow, and evaluation coverage |
 
 ## The problem
 
@@ -171,8 +171,8 @@ Due Process converts records into a reviewable chain of evidence:
 5. Deterministic code reconciles required and recorded minutes.
 6. The grounding gate attaches real IEP, log, and authority references.
 7. The agent drafts an evidence packet and holds it for human review.
-8. External action remains unavailable unless a separate authenticated approval is
-   provided.
+8. The reviewer may download the packet; the public workspace does not implement
+   external filing, email, or storage actions.
 
 The result is not an automated lawyer. It is an auditable evidence-operations
 workspace that helps a human review the record faster and more consistently.
@@ -302,7 +302,7 @@ curl https://due-process-iep-evidence.onrender.com/_stcore/health
 Current verified result:
 
 ```text
-145 passed
+146 passed
 ```
 
 The included offline command is a regression suite, not a performance benchmark:
