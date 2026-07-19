@@ -50,11 +50,11 @@ def test_dataset_is_balanced():
 
 
 def test_dataset_has_documented_cases():
-    # At least some labels come from independent sources (court / guidance),
-    # not just our own materiality rule.
+    # One label has an external court anchor; the rest are policy-consistency
+    # cases and are described as such in the report.
     cases = build_dataset()
     documented = [c for c in cases if c.provenance != "synthetic"]
-    assert len(documented) >= 2
+    assert len(documented) == 1
     assert any("Van Duyn" in c.provenance for c in documented)
 
 

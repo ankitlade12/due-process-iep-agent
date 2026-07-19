@@ -27,7 +27,7 @@ from typing import Optional
 DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 # Maps the spec's intended roles onto real Qwen Cloud model ids.
-DEFAULT_ORCHESTRATOR_MODEL = "qwen3.7-max"    # reasoning, drafting, the agent loop
+DEFAULT_ORCHESTRATOR_MODEL = "qwen3.7-max"    # higher-capacity reasoning/drafting
 DEFAULT_WORKHORSE_MODEL = "qwen3.7-plus"      # extraction/classification
 DEFAULT_VISION_MODEL = "qwen3.7-plus"         # scanned IEP PDFs, photographed logs
 

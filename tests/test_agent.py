@@ -31,19 +31,20 @@ def _run(policy, scenario=None):
     )
 
 
-def test_autopilot_full_run_drafts_and_sends():
+def test_autopilot_full_run_drafts_and_approves():
     run = _run(AutoApprovePolicy())
     # Extracted the single speech commitment from IEP text.
     assert len(run.commitments) == 1
+    assert run.commitments[0].source_ref.uri == "input://iep-services-text"
     # Clear reasons -> nothing ambiguous -> no human needed.
     assert run.classification.needs_human_count == 0
     # Deterministic analysis flagged the material failure.
     assert run.analyses[0].materiality.is_material is True
-    # A complaint was drafted, approved, and sent.
+    # A complaint was drafted and approved, but no delivery is simulated.
     complaint = next(i for i in run.instruments
                      if i.type.value == "state_complaint")
-    assert complaint.status == InstrumentStatus.SENT
-    assert complaint.sent_timestamp == NOW
+    assert complaint.status == InstrumentStatus.APPROVED
+    assert complaint.sent_timestamp is None
     assert run.needs_human is False
     assert run.audit  # audit trail recorded
 
@@ -56,7 +57,7 @@ def test_manual_policy_stops_at_commitment_confirmation():
     assert run.instruments == []
 
 
-def test_ambiguous_reason_blocks_auto_send_but_still_analyzes():
+def test_ambiguous_reason_blocks_completion_but_still_analyzes():
     # One missed session with an unclassifiable reason -> stays pending.
     s = worked_example_speech(classified=False)
     s.logs.append(ServiceLog(
@@ -71,11 +72,11 @@ def test_ambiguous_reason_blocks_auto_send_but_still_analyzes():
     assert run.analyses
 
 
-def test_instruments_sent_only_after_approval():
+def test_auto_approval_does_not_claim_external_delivery():
     run = _run(AutoApprovePolicy())
     for inst in run.instruments:
-        # Auto-approve sends them; status reflects an explicit approval gate.
-        assert inst.status == InstrumentStatus.SENT
+        assert inst.status == InstrumentStatus.APPROVED
+        assert inst.sent_timestamp is None
 
 
 class _ConfirmOnlyPolicy(ApprovalPolicy):

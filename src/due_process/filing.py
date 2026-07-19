@@ -1,4 +1,4 @@
-"""State filing guidance + an evidence packet you can actually file.
+"""State filing guidance + an evidence packet for human review.
 
 A federal-floor letter isn't filable on its own — a real state complaint goes to
 a *specific* state education agency, and you attach the *exhibits* that prove it.
@@ -8,7 +8,7 @@ This module provides:
     floor for states not yet localized), and
   * :func:`export_evidence_packet` — the drafted instrument plus a numbered
     exhibit index (the IEP provision and the exact service-log entries) and the
-    cited authorities, assembled into one document ready to send.
+    cited authorities, assembled for review before any filing or delivery.
 
 State-specific entries are marked ``verify_required`` — confirm the current form
 and address on the state's site before filing.
@@ -104,7 +104,7 @@ STATE_FILING = {
 
 
 def filing_instructions(state: str = "") -> FilingInfo:
-    """Where/how to file, defaulting to the federal floor for unlisted states."""
+    """Where/how to file, returning generic federal guidance for unlisted states."""
     return STATE_FILING.get(state.upper(), _FEDERAL)
 
 
@@ -133,7 +133,7 @@ def export_evidence_packet(
     state: str = "",
     filename: Optional[str] = None,
 ) -> str:
-    """Assemble the filable packet: cover, letter, exhibits, authorities, how-to.
+    """Assemble the review packet: cover, letter, exhibits, authorities, how-to.
 
     Returns the packet text; also writes it to ``filename`` when given.
     """

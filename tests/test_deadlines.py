@@ -29,7 +29,7 @@ def test_add_years_leap_to_leap():
 
 def test_default_limitations_is_two_years():
     assert limitations_years_for() == 2
-    assert limitations_years_for("ZZ") == 2  # unknown state -> federal floor
+    assert limitations_years_for("ZZ") == 2  # unknown state -> federal default
 
 
 def test_compute_deadline_two_years():

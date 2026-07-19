@@ -2,9 +2,10 @@
 
 A parent who misses the filing deadline loses the remedy no matter how strong the
 case, so the deadline is computed deterministically and surfaced with days
-remaining. The federal floor is two years from the date the parent knew or should
-have known of the violation (20 U.S.C. 1415(b)(6), (f)(3)(C)). States may set a
-different period and their own discovery rule, so the period is localizable.
+remaining. The federal default is two years from the date the parent knew or
+should have known of the violation (20 U.S.C. 1415(b)(6), (f)(3)(C)), unless a
+state has an explicit alternative period. Exceptions and state-specific rules
+must be reviewed separately, so the configured period is localizable.
 
 ``today`` is always passed in explicitly — never read from a hidden clock — so the
 math is reproducible and unit-testable.
@@ -16,7 +17,7 @@ from datetime import date
 
 from .models import DeadlineClock
 
-# Federal floor. Two years unless a state overrides.
+# Federal default. Two years unless a state has an explicit alternative period.
 DEFAULT_LIMITATIONS_YEARS = 2
 
 # The two remedies have DIFFERENT clocks — a common, costly trap:
@@ -29,7 +30,7 @@ DEFAULT_LIMITATIONS_YEARS = 2
 STATE_COMPLAINT_LOOKBACK_YEARS = 1
 DUE_PROCESS_LIMITATIONS_YEARS = 2
 
-# Per-state limitations period in years. The federal floor is two years; a few
+# Per-state limitations period in years. The federal default is two years; some
 # states adopt a different window or a distinct discovery rule. Populate this map
 # only with values verified against the state's special-education regulations —
 # an unverified entry is worse than falling back to the federal default. States
@@ -43,7 +44,7 @@ URGENT_THRESHOLD_DAYS = 90
 
 
 def limitations_years_for(state: str = "") -> int:
-    """The limitations period (years) for a state, defaulting to the federal floor."""
+    """The configured period, using the two-year federal default when unknown."""
     return STATE_LIMITATIONS_YEARS.get(state.upper(), DEFAULT_LIMITATIONS_YEARS)
 
 
@@ -124,8 +125,9 @@ def due_process_deadline(
 ) -> DeadlineClock:
     """The deadline to file a DUE-PROCESS complaint.
 
-    Two years (federal floor) from when the parent knew or should have known
-    (20 U.S.C. 1415(b)(6), (f)(3)(C)); a state may set a different period.
+    Two years by federal default from when the parent knew or should have known
+    (20 U.S.C. 1415(b)(6), (f)(3)(C)); a state may set a different period and
+    statutory exceptions require separate review.
     """
     years = limitations_years_for(state)
     expiry = add_years(discovery_date, years)

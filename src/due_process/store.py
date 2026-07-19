@@ -250,7 +250,7 @@ class Agenda:
 
 def agenda(store: CaseStore, case_id: str, today: date,
            within_days: int = 90) -> Agenda:
-    """A glance at a case: what's material, what's owed, what's due soon."""
+    """A glance at a case: material signals, estimated shortfall, and deadlines."""
     analyses = recompute(store, case_id, today)
     result = Agenda(case_id=case_id)
     for a in analyses:

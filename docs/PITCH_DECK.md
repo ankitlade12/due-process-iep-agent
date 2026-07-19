@@ -1,4 +1,7 @@
-# Pitch deck outline (7 slides)
+# Optional pitch storyboard (7 slides)
+
+The official Devpost rules do not require a slide deck. Use this only as a visual
+storyboard or if the live submission form explicitly requests a presentation.
 
 ## 1. Receipts over rhetoric
 
@@ -23,7 +26,7 @@ Show actual-call provenance and fallback labeling. This is the trust slide.
 ## 5. Autopilot with brakes
 
 Workflow diagram ending in an explicit human approval gate, then authenticated
-Function Compute → Alibaba OSS → SHA-256 receipt.
+Function Compute. Show Alibaba OSS and its SHA-256 receipt only when configured.
 
 ## 6. Evidence, not vanity metrics
 

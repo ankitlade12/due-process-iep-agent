@@ -7,13 +7,13 @@ Runs the end-to-end workflow with a human checkpoint at every critical decision:
       -> classify missed-session reasons     [checkpoint: review ambiguous]
       -> run the deterministic analysis      (no checkpoint — auditable math)
       -> choose & draft the right instrument
-      -> approve before sending              [checkpoint: human approval]
-      -> send (timestamped)
+      -> approve before external action      [checkpoint: human approval]
+      -> export/store through an explicit adapter
 
 The deterministic core does the math and the law; the bounded LLM prepares inputs
 and narrates outputs; and a person authorizes every outbound act. The agent never
-classifies an ambiguous reason on its own and never sends an unapproved
-instrument. Every step is recorded in an audit trail.
+classifies an ambiguous reason on its own and never approves an external action
+without a human decision. Every step is recorded in an audit trail.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from datetime import date, datetime
 from typing import Dict, List, Optional, Sequence
 
 from .analysis import CommitmentAnalysis, analyze_commitment
-from .instruments.approval import approve, send
+from .instruments.approval import approve
 from .instruments.drafter import (
     LetterContext,
     draft_service_log_request,
@@ -49,7 +49,7 @@ class ApprovalPolicy:
     """How the agent obtains human decisions at each checkpoint.
 
     The default pauses at every checkpoint (approves nothing), so a default run
-    drafts but never sends. Subclasses supply real decisions.
+    drafts but never authorizes external action. Subclasses supply real decisions.
     """
 
     name = "manual"
@@ -74,8 +74,12 @@ class ApprovalPolicy:
 
 
 class AutoApprovePolicy(ApprovalPolicy):
-    """Demo/eval policy: confirms parsed commitments and approves instruments,
-    but still refuses to auto-resolve ambiguous reasons (those stay pending)."""
+    """Demo/eval policy: confirms parsed commitments and approves instruments.
+
+    Approval changes only the instrument state. It does not claim that an email,
+    filing, or other transmission occurred; those require a separate adapter.
+    Ambiguous reasons still remain pending.
+    """
 
     name = "auto-approve (demo)"
 
@@ -161,12 +165,13 @@ def prepare_enforcement_inputs(
     context: LetterContext,
     client: Optional[LLMClient] = None,
     redact: bool = True,
+    source_uri: str = "input://iep-services-text",
 ) -> PreparedEnforcementInputs:
     """Run only bounded language tasks, stopping before consequential analysis."""
     redactor = _redactor_for_context(context, redact=redact)
     extracted = extract_commitments(
         iep_text, client=client,
-        source_uri="oss://ieps/this-student.pdf", redactor=redactor,
+        source_uri=source_uri, redactor=redactor,
     )
     classification = classify_logs(logs, client=client, redactor=redactor)
     return PreparedEnforcementInputs(
@@ -192,6 +197,7 @@ def run_enforcement(
     require_all_ambiguities_resolved: bool = False,
     config: MaterialityConfig = DEFAULT_CONFIG,
     redact: bool = True,
+    source_uri: str = "input://iep-services-text",
 ) -> AgentRun:
     """Execute the enforcement workflow end to end.
 
@@ -213,7 +219,7 @@ def run_enforcement(
             if prepared_inputs is not None
             else extract_commitments(
                 iep_text or "", client=client,
-                source_uri="oss://ieps/this-student.pdf", redactor=redactor,
+                source_uri=source_uri, redactor=redactor,
             )
         )
         method = run.extracted[0].method if run.extracted else "none"
@@ -344,23 +350,28 @@ def run_enforcement(
                  f"Drafted a state complaint covering "
                  f"{len(actionable)} service(s).")
 
-    # 5) Approve & send each instrument (human gate) --------------------------
+    # 5) Approve each instrument (human gate) ---------------------------------
+    # Approval is a state transition, not a claim of external transmission.
+    # A caller may export, store, or deliver the approved artifact through a
+    # separately authenticated adapter and then record the actual delivery.
     for inst in run.instruments:
         ok = policy.approve_instrument(inst)
         run.checkpoints.append(Checkpoint(
             "approve_instrument",
-            f"Human approves the {inst.type.value} before sending.",
+            f"Human approves the {inst.type.value} before external action.",
             resolved=ok,
         ))
         if ok:
             approve(inst)
-            send(inst, now)
-            log_step("send", f"Human approved; sent {inst.type.value} at "
-                             f"{now.isoformat()}.")
+            log_step(
+                "approval",
+                f"Human approved {inst.type.value}; ready for an authorized "
+                "export, storage, or delivery adapter.",
+            )
         else:
             run.needs_human = True
             log_step("checkpoint",
                      f"{inst.type.value} drafted; awaiting human approval "
-                     "before sending.")
+                     "before external action.")
 
     return run

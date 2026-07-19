@@ -185,7 +185,9 @@ def draft_state_complaint(
     if earliest_deadline:
         timeliness += (f" The earliest events under review age out of the "
                        f"one-year window on {earliest_deadline.isoformat()}; "
-                       "a due-process complaint remains available for two years.")
+                       "a separate due-process limitation period may apply and "
+                       "must be verified under current state law, including any "
+                       "exceptions.")
 
     body = "\n\n".join([
         _fmt_date(context.letter_date),

@@ -45,7 +45,7 @@ TODAY = date.today()
 
 
 class DraftOnlyDemoPolicy(ApprovalPolicy):
-    """Confirm inputs and draft a remedy, but never approve sending."""
+    """Confirm inputs and draft a remedy, but never approve external action."""
 
     name = "draft-only demo"
 
@@ -171,7 +171,16 @@ def prepare_case_review(
     client = default_client() if use_qwen else None
     trace_start = len(client.traces) if client is not None else 0
     prepared = prepare_enforcement_inputs(
-        logs, iep_text=iep_text, context=context, client=client)
+        logs,
+        iep_text=iep_text,
+        context=context,
+        client=client,
+        source_uri=(
+            "synthetic://worked-example/iep-services"
+            if include_systemic_demo
+            else "uploaded://iep-services-text"
+        ),
+    )
     if not prepared.extracted:
         raise ValueError(
             "No service commitment was extracted. Include a service, frequency, "

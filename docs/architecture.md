@@ -4,6 +4,8 @@ Due Process is a Track 4 Autopilot Agent with one strict boundary: Qwen interpre
 ambiguous language; deterministic code owns consequential calculations,
 publication checks, and external-action state.
 
+![Due Process architecture](architecture.svg)
+
 ```mermaid
 flowchart LR
     U["Parent / advocate"] --> UI["Streamlit case desk"]
@@ -17,8 +19,9 @@ flowchart LR
     C2 --> D["Deterministic ledger / review policy / deadlines"]
     D --> G["Evidence-ID and corpus publication gate"]
     G --> H["Human review checkpoint"]
-    H -->|"explicit approval"| FC["Alibaba Function Compute"]
-    FC --> OSS["Alibaba OSS content-addressed packet"]
+    H --> DL["Download human-review packet"]
+    H -.->|"optional explicit storage approval"| FC["Alibaba Function Compute"]
+    FC -.-> OSS["Optional Alibaba OSS packet"]
     OSS --> RCPT["URI + SHA-256 receipt + audit event"]
 ```
 
@@ -30,7 +33,7 @@ flowchart LR
 | Deterministic core | minutes, windows, review threshold, deadline indicators | that a configurable threshold is the law |
 | Grounding gate | source IDs and controlled corpus resolution | that the corpus is complete or an authority controls a case |
 | Human gate | confirms interpretation and approves external action | automated legal representation |
-| OSS adapter | approved packet storage and immutable content hash | permission without an explicit approval flag |
+| Optional OSS adapter | approved packet storage and content hash | permission without an explicit approval flag |
 
 ## Deployment boundary
 
@@ -47,10 +50,12 @@ sequenceDiagram
     C->>F: custom case + Bearer token
     F->>F: validate size, rows, dates, ranges
     F->>Q: redacted text tasks
-    C->>F: exact reviewed packet + Bearer token + explicit approval
-    F->>O: content-addressed evidence packet
-    O-->>F: storage result
-    F-->>C: oss:// URI + SHA-256 + audit entry
+    opt OSS storage configured
+        C->>F: exact reviewed packet + Bearer token + explicit approval
+        F->>O: content-addressed evidence packet
+        O-->>F: storage result
+        F-->>C: oss:// URI + SHA-256 + audit entry
+    end
 ```
 
 Custom-case requests are disabled until `DUE_PROCESS_API_TOKEN` is configured.

@@ -61,18 +61,20 @@ guarantee the corpus is complete or that an authority controls a particular case
 
 ## The agent workflow (Track 4)
 
+![Due Process architecture](docs/architecture.svg)
+
 ```
 ingest IEP text + raw service logs
   → extract service commitments        [checkpoint: human confirms parsed values]
   → classify missed-session reasons    [checkpoint: human resolves ambiguous]
   → run the deterministic analysis     (auditable math — no checkpoint needed)
   → draft the right instrument         (service-log request / state complaint)
-  → approve before sending             [checkpoint: human approval]
-  → send (timestamped audit entry)
+  → approve before external action     [checkpoint: human approval]
+  → export or optionally store through an authenticated adapter
 ```
 
-The agent never classifies an ambiguous reason on its own and never sends an
-unapproved instrument. Every step is recorded in an audit trail.
+The agent never classifies an ambiguous reason on its own and never authorizes an
+external action without approval. Every step is recorded in an audit trail.
 
 ## Reproducible evaluation
 
@@ -93,11 +95,10 @@ by model version and are not the repository benchmark.
 
 **Honest caveat:** most labels are synthetic and constructed to the system's own
 materiality rule, so the headline is the *contrast* with the baseline (lower FPR,
-no unverifiable citations), not proof the threshold is legally perfect. A few
-cases now carry **independent, documented labels** — e.g. *Van Duyn*, where a
-court held a 50% tutoring shortfall material — which the system also gets right.
-Full validation still needs a corpus of advocate-labeled de-identified IEPs (on
-the roadmap).
+no unverifiable citations), not proof the threshold is legally perfect. One
+scenario has an **independent court-derived anchor**: *Van Duyn*, where a court
+held a 50% tutoring shortfall material. Full validation still needs a corpus of
+advocate-labeled de-identified IEPs (on the roadmap).
 
 ## Quick start
 
@@ -108,7 +109,7 @@ uv pip install -e ".[dev,llm,ingest,demo]"
 # 1) Deterministic core — reproduce the spec's worked example (108 vs 72 sessions):
 python -m due_process.examples.worked_example
 
-# 2) Full Track 4 workflow — extract → classify → analyze → draft → approve → send:
+# 2) Full Track 4 workflow — extract → classify → analyze → draft → approve:
 python -m due_process.examples.agent_demo
 
 # 3) Systemic evidence — a district of families → one de-identified district complaint:
@@ -121,8 +122,8 @@ python -m due_process.examples.vision_demo
 python -m due_process.evaluation.run_eval --offline
 
 # 6) Live advocate case desk: Qwen/rules prepare inputs, a human edits and
-# confirms them, deterministic analysis runs, then an approved packet can be
-# stored through Function Compute with a verifiable OSS receipt.
+# confirms them, deterministic analysis runs, then the packet can be downloaded
+# or optionally stored through Function Compute with a verifiable OSS receipt.
 streamlit run src/due_process/examples/case_desk.py
 
 # Test suite (all offline):
@@ -161,7 +162,7 @@ cp .env.example .env          # then paste your Qwen Cloud key into DASHSCOPE_AP
 The LLM layer targets Qwen Cloud's OpenAI-compatible endpoint
 (`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`). Model roles:
 
-- **`qwen3.7-max`** — orchestration, reasoning, and the letter narrative
+- **`qwen3.7-max`** — higher-capacity reasoning and letter narrative
 - **`qwen3.7-plus`** — default workhorse for extraction/classification
 - **`qwen3.7-plus`** — multimodal scanned-IEP reading; the Function Compute demo
   also uses it as the low-latency deployed workhorse
@@ -204,7 +205,7 @@ due_process/
   privacy.py         direct-identifier redaction before text cloud calls
   ingest.py          real-document ingestion (CSV/PDF logs, Qwen-vision IEP)
   store.py           SQLite case store + the deadline guard (alerts/agenda)
-  filing.py          per-state filing guidance + filable evidence packet
+  filing.py          per-state filing guidance + human-review evidence packet
   systemic.py        de-identified, k-anonymous cross-family aggregation
   scenarios.py       synthetic scenarios with ground-truth labels
   llm/               bounded LLM layer (client + classification/extraction/narrative)
@@ -228,20 +229,21 @@ advocate can run it on a real child's actual records":
   IEPs read by Qwen's vision model**.
 - **A year-round tool with a deadline guard** (`store.py` + `deadlines.py`) — a
   SQLite case store that remembers across the year and surfaces an *agenda*: what's
-  material, what's owed, and which deadline is approaching. It tracks the two
+  material, what the records show, and which deadline is approaching. It tracks the two
   *different* clocks correctly — a **1-year** window for a state complaint (34
   C.F.R. 300.153(c)) vs. **2 years** for due process (20 U.S.C. 1415) — a trap
   that otherwise makes parents miss the real, shorter deadline.
 - **Make-up reconciliation** (`ledger.py`) — when the school makes up a missed
-  session, that shortfall is marked cured and drops out of what's owed.
+  session, that entry is reconciled and drops out of the current estimated
+  service shortfall.
 - **Human-review packet** (`filing.py`) — per-state filing guidance plus an exported
   **evidence packet**: the complaint, a numbered exhibit index (the IEP line + the
-  exact log entries), and the cited authorities, ready to send.
+  exact log entries), and the cited authorities, ready for human review.
 
 ## Not legal advice
 
 This is information and drafting support, not legal advice. A human approves every
-action. Legal specifics are the federal floor and must be localized and verified
+action. Legal specifics use federal defaults and must be localized and verified
 against your state's special-education regulations before reliance.
 
 The early discovery brief is retained as an explicitly archived artifact; current

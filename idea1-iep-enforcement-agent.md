@@ -7,13 +7,20 @@ _Concept, positioning, and build spec. Idea 1 from the Qwen Cloud hackathon anal
 > current product specification. Use `README.md`, `docs/SUBMISSION.md`,
 > `docs/architecture.md`, and `SECURITY.md` for current claims and behavior.
 
+> **Final product decision (July 19):** keep the existing feature set. The
+> submission pitch is an *evidence flight recorder for IEP service delivery*:
+> Qwen interprets messy language, deterministic code reconciles the record, and
+> a human controls external action. Novelty comes from the inspectable boundary,
+> source-level provenance, reproducible evaluation, and privacy-gated pattern
+> review—not from claiming that service tracking or AI letters are unique.
+
 ---
 
 ## One line
 
 The incumbents prepare you for the IEP meeting. This one holds the school accountable after it.
 
-A grounded compliance agent that tracks whether a school actually delivers the services it promised in a child's IEP, proves the gap when it does not, computes what the child is owed, and drafts the remedy with every claim cited to a real legal source.
+A grounded review agent that tracks what the IEP describes, reconciles it with delivery records, estimates a discussion starting point, and drafts a human-review packet with every claim tied to a source.
 
 ---
 
@@ -47,7 +54,7 @@ What none of the parent facing tools do. These are the openings.
 
 1. **No longitudinal enforcement.** Every parent tool is a point in time prep assistant that helps you get ready for the annual meeting. None run across the whole year tracking whether the school delivered what the IEP promised, which is where violations actually live. The math is manual and unforgiving. Using the example above, 108 required against 72 delivered with 12 excused leaves 24 missed, and the parent is left to count that by hand and decide what it means. No parent tool computes it.
 
-2. **No calculation of what is owed, and no deadline guard.** When a school falls short the remedy is compensatory services, and the deadline is typically within two years of the violation. A parent who arrives with three months of tracking data is in a far stronger position than one who says I think services were missed. The standard is material failure to implement, a case by case judgment about whether the gap was significant. Calculating the shortfall, applying that standard, and tracking the statute of limitations is real work none of the incumbents automate.
+2. **The consequential calculation remains high-friction.** When records show a shortfall, any remedy and filing deadline depend on individualized facts, the chosen process, and state law. A parent who arrives with three months of organized records is in a far stronger position than one who says services seemed to be missed. Reconstructing the shortfall, screening it under a disclosed review policy, and surfacing distinct deadline indicators is still valuable even though current products increasingly automate parts of the workflow.
 
 3. **No grounding.** The AI knows special ed law is a trust me LLM. In a context where a parent might quote a provision at a meeting, a hallucinated citation is worse than useless. None of these tools appear to link each assertion to the exact statute text plus the exact line in the IEP with a verifiable source the parent can click and check.
 
@@ -85,13 +92,13 @@ The positioning line to lead with everywhere, the demo, the README, the blog: fr
 
 A grounded compliance ledger with an agent on top. It ingests the IEP and the service logs, tracks promised minutes against delivered minutes over time, detects material failures, computes compensatory time owed as a starting position, and drafts the correct instrument with every claim cited to source. A human approves every outbound action.
 
-The pipeline: parse the IEP into structured service commitments, ingest service logs and parent inputs, run the deterministic ledger, classify and flag violations, compute deadlines, draft the instrument, route to the parent for approval, send and timestamp.
+The pipeline: parse the IEP into structured service commitments, ingest service logs and parent inputs, run the deterministic ledger, classify and flag review items, compute deadline indicators, draft the instrument, and route it to the parent for approval before any external action.
 
 ### The Qwen and Alibaba Cloud stack (real)
 
 Models, all via Alibaba Cloud Model Studio (console at modelstudio.console.alibabacloud.com, OpenAI and Anthropic compatible endpoints, Singapore region primary), which also satisfies the hackathon requirement to build on Qwen Cloud:
 
-- **Qwen3.7-Max** for orchestration, reasoning, and drafting. 1M token context, agent first, strong on tool calls and long horizon workflows. Handles the agent loop and the letter narrative. Use `preserve_thinking` for multi turn agent consistency.
+- **Qwen3.7-Max** for higher-capacity reasoning and the letter narrative. The current implementation does not claim an autonomous Qwen planning loop.
 - **Qwen3.6-Plus** as the cheaper workhorse for routine extraction and classification, to keep token cost down on high volume steps.
 - **A vision capable Qwen** (Qwen3.6 multimodal or Qwen3.7-Plus-Preview) to read scanned IEP PDFs and photographed service logs, since real documents arrive as images.
 - **Qwen3.6-35B-A3B**, open weight under Apache 2.0, as the local or private VPC option for the privacy path so identifiable records never leave the parent's control. Runs on a single 24 GB GPU.
@@ -112,7 +119,7 @@ Backend on Alibaba Cloud, which is what the deployment proof must show:
 - **ServiceLog**, from school logs or parent inputs: id, commitment_id, date, minutes_delivered, setting_actual, group_size_actual, provider, status (delivered, short, missed), missed_reason_text, source_ref (log page or parent email timestamp).
 - **DeliveryLedger**, computed per commitment per period: required_minutes, delivered_minutes, excused_minutes, unexcused_shortfall_minutes, running totals.
 - **Violation**, computed then classified: id, commitment_id, type (missed_sessions, short_sessions, group_dilution, wrong_provider, late_start, unimplemented_accommodation), window_start, window_end, shortfall_minutes, materiality (deterministic flag plus LLM rationale), evidence_refs, status (open, resolved_by_makeup, escalated).
-- **DeadlineClock**: violation_id, discovery_date, sol_expiry_date (discovery plus two years, localized to state), days_remaining.
+- **DeadlineClock**: violation_id, discovery_date, sol_expiry_date (federal two-year default unless state law supplies an explicit alternative, with exceptions requiring review), days_remaining.
 - **Instrument**, drafted: type (service_log_request, pwn_request, iee_request, state_complaint, due_process, mediation_request), violation_ids, draft_text, citations, status (draft, approved, sent), sent_timestamp.
 
 ### The deterministic and LLM boundary (real)
@@ -192,7 +199,7 @@ Materiality rule fires because unexcused shortfall crosses the configured thresh
 
 Compensatory estimate: 720 minutes as a starting position, flagged as equitable and subject to the Reid analysis rather than guaranteed.
 
-Deadline clock: discovery date plus two years under 20 U.S.C. 1415, localized to the state, with days remaining shown.
+Deadline clock: the two-year federal default under 20 U.S.C. 1415 unless state law supplies an explicit alternative, localized to the state, with days remaining shown and exceptions requiring review.
 
 Instrument: the agent drafts a service log request first if logs are incomplete, then a state complaint under 34 C.F.R. 300.151 to 300.153, citing the specific IEP provision by page, the 24 log entries, and the governing standard, with the compensatory ask framed as equitable. The parent reviews and approves before anything is sent.
 

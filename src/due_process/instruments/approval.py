@@ -1,9 +1,11 @@
 """The human-in-the-loop approval gate.
 
-An instrument is drafted in ``DRAFT`` status. It cannot be sent until a human
-approves it (``APPROVED``), and only then can it be marked ``SENT`` with a
-timestamp. This is the Track 4 "human checkpoint at every critical decision"
+An instrument is drafted in ``DRAFT`` status. It cannot be recorded as sent until
+a human approves it (``APPROVED``), and only then can it be marked ``SENT`` with
+a timestamp. This is the Track 4 "human checkpoint at every critical decision"
 made concrete: the agent can prepare, but a person authorizes every outbound act.
+The state transition records a delivery performed by a caller; it does not itself
+transmit a document.
 """
 
 from __future__ import annotations
@@ -26,11 +28,11 @@ def approve(instrument: Instrument) -> Instrument:
 
 
 def send(instrument: Instrument, sent_at: datetime) -> Instrument:
-    """Mark an approved instrument as sent, recording the timestamp.
+    """Record delivery already performed by an authorized external adapter.
 
-    Refuses to send anything not explicitly approved — the core safety property.
-    ``sent_at`` is passed in (never read from a hidden clock) so the audit trail
-    is reproducible.
+    This function performs no network, email, or filing operation. Refusing to
+    record delivery before approval is the core safety property. ``sent_at`` is
+    passed in so the audit trail is reproducible.
     """
     if instrument.status != InstrumentStatus.APPROVED:
         raise ApprovalError(

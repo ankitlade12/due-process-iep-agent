@@ -1,11 +1,11 @@
 """A labeled synthetic dataset for the material-failure detection eval.
 
-Each case is constructed with an explicit ground-truth label (material failure:
-yes/no) and a ground-truth compensatory-minutes figure. Cases are placed clearly
-above or below the materiality line, plus a couple of borderline ones, so the
-metrics measure real behavior rather than a tautology. Unexcused sessions are
-spread (never adjacent) unless a case is specifically testing the
-consecutive-sessions rule.
+Each case is constructed with an explicit expected review-signal label (yes/no)
+and an expected shortfall-minutes figure. Most cases intentionally encode the
+product policy and therefore test implementation consistency, not independent
+legal validity. One court-derived scenario provides a limited external anchor.
+Unexcused sessions are spread (never adjacent) unless a case is specifically
+testing the consecutive-sessions rule.
 """
 
 from __future__ import annotations
@@ -34,9 +34,8 @@ _START = date(2025, 9, 2)
 class EvalCase:
     """One labeled scenario for the eval.
 
-    ``provenance`` distinguishes cases whose label comes from an independent
-    source (a court holding or published advocacy guidance) from purely synthetic
-    ones — the documented cases give labels that do NOT just echo our own rule.
+    ``provenance`` distinguishes the case whose label has an independent court
+    anchor from synthetic policy-consistency cases.
     """
 
     name: str
@@ -166,9 +165,7 @@ def build_dataset() -> List[EvalCase]:
                     notes="Full delivery — must not false-positive."),
         _build_case("worked_example", label_material=True,
                     delivered=72, excused=12, unexcused=24,
-                    notes="The spec case: 22% unexcused shortfall.",
-                    provenance="documented: legal-aid guidance (108 required vs "
-                               "72 delivered -> grounds for a state complaint)"),
+                    notes="The product-spec case: 22% unexcused shortfall."),
         _build_case("minor_below_threshold", label_material=False,
                     delivered=100, excused=3, unexcused=5,
                     notes="4.6% unexcused — below the threshold."),

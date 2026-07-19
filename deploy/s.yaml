@@ -3,14 +3,14 @@
 #   npm install -g @serverless-devs/s
 #   s config add            # add your Alibaba Cloud AccessKey (alias: default)
 #   export DASHSCOPE_API_KEY=...      # rotated Qwen Cloud key
-#   export DUE_PROCESS_API_TOKEN=...  # long random Bearer token for custom cases
 #   ./build.sh              # bundle the due_process package + openai into ./dist
 #   s deploy
 #   s invoke                # runs the worked example; or: s invoke -e '{...}'
 #
-# Empty unauthenticated requests run the synthetic demo. Custom-case requests
-# require the Bearer token. Optional OSS storage additionally requires the four
-# DUE_PROCESS_OSS_* variables and an explicit approval flag in the request.
+# Empty unauthenticated requests run the synthetic demo. To enable custom-case
+# requests later, configure DUE_PROCESS_API_TOKEN in Function Compute. Optional
+# OSS storage additionally needs the four DUE_PROCESS_OSS_* variables and an
+# explicit approval flag in the request.
 
 edition: 3.0.0
 name: due-process-iep-agent
@@ -35,15 +35,10 @@ resources:
       code: ./dist
       environmentVariables:
         DASHSCOPE_API_KEY: ${env.DASHSCOPE_API_KEY}
-        DUE_PROCESS_API_TOKEN: ${env.DUE_PROCESS_API_TOKEN}
         # qwen3.7-plus everywhere in the deployed function: fast and reliable
         # within the request timeout (qwen3.7-max reasoning latency can exceed it).
         DUE_PROCESS_ORCHESTRATOR_MODEL: qwen3.7-plus
         DUE_PROCESS_WORKHORSE_MODEL: qwen3.7-plus
-        DUE_PROCESS_OSS_BUCKET: ${env.DUE_PROCESS_OSS_BUCKET}
-        DUE_PROCESS_OSS_ENDPOINT: ${env.DUE_PROCESS_OSS_ENDPOINT}
-        DUE_PROCESS_OSS_ACCESS_KEY_ID: ${env.DUE_PROCESS_OSS_ACCESS_KEY_ID}
-        DUE_PROCESS_OSS_ACCESS_KEY_SECRET: ${env.DUE_PROCESS_OSS_ACCESS_KEY_SECRET}
       triggers:
         - triggerName: httpTrigger
           triggerType: http

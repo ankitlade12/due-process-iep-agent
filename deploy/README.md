@@ -33,17 +33,22 @@ npm install -g @serverless-devs/s
 s config add
 
 export DASHSCOPE_API_KEY="ROTATED_VALUE"
-export DUE_PROCESS_API_TOKEN="LONG_RANDOM_VALUE"
-export DUE_PROCESS_OSS_BUCKET="PRIVATE_BUCKET"
-export DUE_PROCESS_OSS_ENDPOINT="https://oss-ap-southeast-1.aliyuncs.com"
-export DUE_PROCESS_OSS_ACCESS_KEY_ID="LIMITED_OSS_ID"
-export DUE_PROCESS_OSS_ACCESS_KEY_SECRET="LIMITED_OSS_SECRET"
 
 cd deploy
 ./build.sh
 s deploy
 s invoke
 ```
+
+OSS is optional. To enable approval-gated storage later, configure
+`DUE_PROCESS_OSS_BUCKET`, `DUE_PROCESS_OSS_ENDPOINT`,
+`DUE_PROCESS_OSS_ACCESS_KEY_ID`, and `DUE_PROCESS_OSS_ACCESS_KEY_SECRET` on the
+deployed function using a least-privilege identity.
+
+The initial synthetic proof route does not need an application token. To enable
+custom de-identified case requests, generate a long random value and configure it
+as `DUE_PROCESS_API_TOKEN` on the deployed function; callers must send the same
+value as a Bearer token.
 
 The empty invocation returns a synthetic draft plus actual-call provenance. It
 does not infer “Qwen online” merely because a key exists.

@@ -4,8 +4,8 @@
 
 Starts from raw IEP text and unclassified logs and runs the whole pipeline:
 extract commitments -> classify reasons -> deterministic analysis -> draft the
-right instrument -> approve -> send. It prints the audit trail, the human
-checkpoints, and the drafted, approved state complaint.
+right instrument -> approve. It prints the audit trail, the human checkpoints,
+and the drafted, approved state complaint. No external transmission is simulated.
 
 Runs offline with transparent rules by default; if ``DASHSCOPE_API_KEY`` is set
 it uses Qwen for extraction, classification, and the narrative.

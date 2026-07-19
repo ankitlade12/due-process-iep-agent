@@ -73,10 +73,10 @@ configured is never presented as proof that Qwen completed the task.
 | compensatory-minutes MAE | 0.0 | n/a |
 
 This is an 11-case engineering evaluation: seven positive labels, four negative,
-and two independently documented/court-derived cases. Most labels are synthetic
-and encode the product's review policy. It tests consistency and provenance, not
-legal validity, real-world accuracy, or case outcomes. `--online` is a separate,
-variable raw-Qwen comparison.
+and one scenario anchored to a published court holding. The other labels are
+synthetic and encode the product's review policy. It tests consistency and
+provenance, not legal validity, real-world accuracy, or case outcomes. `--online`
+is a separate, variable raw-Qwen comparison.
 
 ## Safety and privacy
 
@@ -124,9 +124,10 @@ does this arithmetic or chooses a citation.”
 controlled authorities, and downloadable packet. Call the threshold a review
 signal, not a legal conclusion.
 
-**1:55–2:20 — Human/external action.** Review the generated packet, click the
-separate storage approval, and show the live Function Compute response containing
-the OSS URI, SHA-256 receipt, request ID, and audit event.
+**1:55–2:20 — Human/cloud boundary.** Review the generated packet and show that
+external action remains held. Then show a live synthetic Function Compute response
+with successful Qwen provenance and its request ID. If optional OSS is configured,
+also show the separate storage approval and matching SHA-256 receipt.
 
 **2:20–2:40 — Evaluation.** Run the offline benchmark and state its limitations in
 one sentence.

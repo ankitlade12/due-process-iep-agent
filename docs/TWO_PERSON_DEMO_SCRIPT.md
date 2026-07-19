@@ -25,9 +25,10 @@ bright line. The gate rejects a claim without its evidence IDs.”
 
 ## 1:40–2:10 — Presenter B: human and external tool
 
-Show the held draft and approval checkpoint. Cut to the pre-run authenticated
-Function Compute result and OSS receipt. “Nothing external happens until approval.
-The stored packet is content-addressed and returns a SHA-256 audit receipt.”
+Show the held draft and approval checkpoint. Cut to the live synthetic Function
+Compute result and request ID. “Nothing external happens until approval.” If OSS
+is configured, separately approve storage and show the content hash; otherwise
+show the packet download and keep storage explicitly labeled optional.
 
 ## 2:10–2:30 — Presenter A: proof
 

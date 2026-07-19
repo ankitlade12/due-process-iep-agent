@@ -306,7 +306,8 @@ class DeadlineClock:
     """The statute-of-limitations clock for a violation.
 
     ``sol_expiry_date`` is ``discovery_date`` plus the state's limitations period
-    (federal floor: two years, 20 U.S.C. 1415(b)(6),(f)(3)(C)).
+    (federal default: two years unless state law supplies an explicit alternative,
+    20 U.S.C. 1415(b)(6),(f)(3)(C)).
     """
 
     violation_id: str

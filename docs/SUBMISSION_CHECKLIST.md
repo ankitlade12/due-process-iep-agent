@@ -19,7 +19,7 @@ The official rules control; re-check them immediately before submitting.
 - [ ] Public demo video under three minutes.
 - [ ] Code/repository link added to the submission.
 - [ ] Alibaba Cloud Workbench screenshot clearly showing the deployed resource.
-- [ ] Slide deck attached if the submission form requests it.
+- [ ] Optional presentation attached only if the live submission form requests it.
 
 The organizer's July update says missing code-link or Workbench proof can make an
 entry ineligible. Capture the screenshot after the final deployment and ensure no
@@ -31,7 +31,10 @@ credential or student record is visible.
 - [ ] `uv run --extra dev pytest` passes on a clean checkout.
 - [ ] `python -m due_process.evaluation.run_eval --offline` matches README metrics.
 - [ ] Live Qwen path is recorded once; fallback is labeled honestly if it occurs.
-- [ ] Authenticated synthetic request produces an OSS receipt.
+- [ ] Live Function Compute synthetic request reports at least one successful
+  Qwen call and no hidden fallback.
+- [ ] If optional OSS storage is configured, an authenticated approved request
+  produces a matching receipt hash.
 - [ ] Demo uses synthetic/de-identified data only.
 - [ ] Accessibility smoke check: keyboard navigation, contrast, captions, readable
   zoom, and no meaning conveyed by color alone.
@@ -40,5 +43,6 @@ credential or student record is visible.
 
 ## Official references
 
-- [Hackathon rules](https://qwen3-hackathon.devpost.com/rules)
-- [Hackathon page and submission flow](https://qwen3-hackathon.devpost.com/)
+- [Hackathon rules](https://qwencloud-hackathon.devpost.com/rules)
+- [Hackathon page and submission flow](https://qwencloud-hackathon.devpost.com/)
+- [Organizer deployment-proof clarification](https://qwencloud-hackathon.devpost.com/updates/45055-proof-of-deployment-101-what-judges-need-to-see)

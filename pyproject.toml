@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "due-process"
 version = "0.1.0"
-description = "An IEP enforcement agent: tracks whether a school delivers the special-education services it promised, proves the gap, computes what is owed, and drafts the cited remedy."
+description = "An IEP service-delivery review agent: reconciles promised and recorded services, grounds potential gaps, estimates a discussion starting point, and drafts a cited review packet."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

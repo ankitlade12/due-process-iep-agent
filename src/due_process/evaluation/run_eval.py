@@ -110,6 +110,7 @@ def evaluate(*, online: bool = False,
         "cases": rows,
         "limitations": [
             "Most labels are synthetic and encode the product review policy.",
+            "Only one scenario is anchored to a published court holding.",
             "This evaluates software consistency, not legal validity or outcomes.",
             "Online Qwen results can vary by model version and service behavior.",
         ],
@@ -126,7 +127,7 @@ def _print_report(report: dict[str, Any]) -> None:
     print(f"Mode: {report['mode']}")
     print(f"Dataset: {ds['cases']} labeled cases ({ds['material']} review-signal, "
           f"{ds['not_material']} no-signal; "
-          f"{ds['documented_or_court_derived']} independently documented)")
+          f"{ds['documented_or_court_derived']} court-derived)")
     print(f"Baseline: {report['baseline']}\n")
     print(f"{'metric':<24}{'GROUNDED':>14}{'BASELINE':>14}")
     print("-" * 72)

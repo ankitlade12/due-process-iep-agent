@@ -26,8 +26,8 @@ The memorable contrast is:
 
 The demo should prove this rather than narrate it. One live language task, one
 visible deterministic calculation, one evidence chain, one held approval, and one
-Alibaba OSS receipt are enough. The hash receipt is the out-of-box moment: the
-agent does not merely generate prose; it creates a verifiable case artifact.
+live Function Compute response are enough. If OSS is configured, the hash receipt
+is a useful optional proof point; it is not required for the product or submission.
 
 ## Initial user and workflow
 
