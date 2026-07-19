@@ -1,6 +1,10 @@
 """Tests for direct-identifier redaction."""
 
 from due_process.privacy import Redactor, redact_for_cloud
+from due_process.examples.redacted_case import (
+    REDACTED_CASE_IEP_TEXT,
+    REDACTED_CASE_STUDENT,
+)
 
 
 def _redactor():
@@ -58,3 +62,14 @@ def test_redact_for_cloud_blocks_leak():
     r = _redactor()
     out = redact_for_cloud("Maria Gonzalez missed speech", r)
     assert "Maria" not in out and "[STUDENT]" in out
+
+
+def test_packaged_pseudonym_does_not_treat_student_role_as_identifier():
+    r = Redactor.for_case(student_name=REDACTED_CASE_STUDENT)
+
+    out = redact_for_cloud(REDACTED_CASE_IEP_TEXT, r)
+
+    assert "R-104" not in out
+    assert "Student label: [STUDENT]" in out
+    assert "[[STUDENT]]" not in out
+    assert r.leaks(out) == []

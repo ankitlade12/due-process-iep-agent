@@ -57,11 +57,22 @@ class Redactor:
             value = (value or "").strip()
             if len(value) < 2:
                 return
+            # Labels such as "Student R-104" are safe pseudonyms used by the
+            # public demo.  "Student" describes the person's role; treating it
+            # as a standalone identifier both over-redacts ordinary prose and
+            # collides with the intentional ``[STUDENT]`` placeholder.
+            placeholder_words = {
+                word.casefold()
+                for word in re.findall(r"[A-Za-z0-9]+", label)
+            }
+            if value.casefold() in placeholder_words:
+                return
             ids[value] = label
             # Also mask individual name tokens (first/last) so "Maria" alone goes.
             if " " in value and label in ("[STUDENT]", "[PARENT]"):
                 for token in value.split():
-                    if len(token) >= 2:
+                    if (len(token) >= 2
+                            and token.casefold() not in placeholder_words):
                         ids.setdefault(token, label)
 
         add(student_name, "[STUDENT]")
@@ -103,9 +114,13 @@ class Redactor:
         """Any known identifiers still present in ``text`` (should be none after
         redaction). Used to assert nothing identifiable leaves for the cloud."""
         found = []
-        low = (text or "").lower()
+        # Intentional placeholders contain role words (for example STUDENT),
+        # but placeholders are not identifier leaks. Remove them before the
+        # defense-in-depth assertion checks the remaining text.
+        without_placeholders = re.sub(r"\[[A-Z][A-Z0-9_]*\]", "", text or "")
+        low = without_placeholders.casefold()
         for value in self.identifiers:
-            if value.lower() in low:
+            if value.casefold() in low:
                 found.append(value)
         return found
 

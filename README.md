@@ -4,7 +4,7 @@
 [![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-bounded%20AI-6F4AFF.svg)](https://www.alibabacloud.com/en/product/modelstudio)
 [![Render](https://img.shields.io/badge/Render-live-46E3B7.svg?logo=render&logoColor=111111)](https://due-process-iep-evidence.onrender.com)
 [![CI](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-146%20passing-brightgreen.svg)](#reproducible-engineering-verification)
+[![Tests](https://img.shields.io/badge/tests-147%20passing-brightgreen.svg)](#reproducible-engineering-verification)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 > **An IEP says what a school promised. Due Process shows what the records prove—and keeps every next step under human control.**
@@ -302,7 +302,7 @@ curl https://due-process-iep-evidence.onrender.com/_stcore/health
 Current verified result:
 
 ```text
-146 passed
+147 passed
 ```
 
 The included offline command is a regression suite, not a performance benchmark:
