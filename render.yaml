@@ -1,0 +1,27 @@
+# Public presentation layer only. The required backend remains Alibaba Cloud
+# Function Compute; configure its trigger URL during Render Blueprint creation.
+services:
+  - type: web
+    name: due-process-iep-evidence
+    runtime: python
+    plan: free
+    repo: https://github.com/ankitlade12/due-process-iep-agent.git
+    branch: main
+    buildCommand: pip install -e ".[llm,ingest,demo]"
+    startCommand: streamlit run src/due_process/examples/case_desk.py --server.address 0.0.0.0 --server.port $PORT --server.headless true
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: DUE_PROCESS_ORCHESTRATOR_MODEL
+        value: qwen3.7-max
+      - key: DUE_PROCESS_WORKHORSE_MODEL
+        value: qwen3.7-plus
+      - key: DUE_PROCESS_VISION_MODEL
+        value: qwen3.7-plus
+      - key: DASHSCOPE_API_KEY
+        sync: false
+      - key: DUE_PROCESS_FUNCTION_URL
+        sync: false
+      - key: DUE_PROCESS_API_TOKEN
+        sync: false

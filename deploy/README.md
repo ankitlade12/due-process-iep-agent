@@ -59,6 +59,21 @@ Set the deployed trigger URL on the Streamlit host (not inside Function Compute)
 export DUE_PROCESS_FUNCTION_URL="https://your-function-trigger-url"
 ```
 
+## Public Streamlit frontend on Render
+
+The repository root includes `render.yaml` for the public presentation layer.
+Create a Render Blueprint from the repository, provide the three secret values
+when prompted, and keep Function Compute as the required Alibaba Cloud backend:
+
+- `DASHSCOPE_API_KEY` — a rotated Qwen Cloud key;
+- `DUE_PROCESS_FUNCTION_URL` — the deployed Function Compute HTTP trigger; and
+- `DUE_PROCESS_API_TOKEN` — the same application token configured on Function
+  Compute when authenticated custom requests or optional storage are enabled.
+
+The Blueprint uses Render's free plan to avoid an automatic charge. Free services
+can cold-start after being idle; upgrade manually only if the account owner chooses
+to accept the cost. Do not upload `.env` or paste cloud AccessKeys into Render.
+
 ## Authenticated synthetic/de-identified custom request
 
 ```bash
