@@ -5,6 +5,6 @@
 | [Architecture](architecture.md) | System boundaries, Qwen tasks, deterministic core, grounding, and approval flow |
 | [Redacted demo case](REDACTED_DEMO_CASE.md) | Live upload case, supporting source note, expected ledger, and presenter steps |
 
-The root README, working code, tests, and these two documents define the public
+The root README, working code, tests, and these documents define the public
 product. Internal submission drafts and historical discovery notes are not kept in
 the public repository.

@@ -1,0 +1,40 @@
+# Serverless Devs v3 definition for the required Alibaba Cloud backend.
+# This service accepts only health checks and a packaged synthetic proof run.
+# It does not accept custom student records or perform outbound actions.
+
+edition: 3.0.0
+name: due-process-iep-agent
+access: default
+
+vars:
+  region: ap-southeast-1
+
+resources:
+  due-process-agent:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: due-process-agent
+      description: Synthetic-only IEP evidence workflow with Qwen Cloud provenance
+      runtime: python3.10
+      handler: handler.handler
+      timeout: 300
+      cpu: 0.5
+      memorySize: 1024
+      diskSize: 512
+      code: ./dist
+      environmentVariables:
+        DASHSCOPE_API_KEY: ${env('DASHSCOPE_API_KEY')}
+        DUE_PROCESS_ORCHESTRATOR_MODEL: qwen3.7-plus
+        DUE_PROCESS_WORKHORSE_MODEL: qwen3.7-plus
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            # Function Compute authentication prevents public callers from
+            # spending Qwen quota. Judges see proof via the console screenshot
+            # and the signed `s invoke` command documented below.
+            authType: function
+            methods:
+              - GET
+              - POST

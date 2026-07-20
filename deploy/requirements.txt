@@ -1,0 +1,2 @@
+# Runtime dependency installed into the deployment bundle by build.sh.
+openai>=1.40

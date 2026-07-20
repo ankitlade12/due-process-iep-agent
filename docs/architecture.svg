@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Due Process runtime architecture</title>
+  <desc id="desc">The public Streamlit product on Render sends redacted bounded language tasks to Qwen Cloud, then uses human checkpoints and a deterministic Python core to produce a reviewer-controlled evidence packet. A separately authenticated Alibaba Function Compute backend runs the same synthetic workflow for deployment proof and records Qwen provenance without accepting custom records or outbound actions.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f8f7"/>
+      <stop offset="1" stop-color="#edf4f6"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2da698"/>
+      <stop offset="1" stop-color="#126c72"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7df"/>
+      <stop offset="1" stop-color="#ffedb6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#193740" flood-opacity=".12"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#355b63"/>
+    </marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#bb7412"/>
+    </marker>
+    <style>
+      .title{font:800 47px Inter,Arial,sans-serif;fill:#15272f;letter-spacing:-1px}
+      .subtitle{font:400 22px Inter,Arial,sans-serif;fill:#526975}
+      .lane{font:800 15px Inter,Arial,sans-serif;fill:#5d717a;letter-spacing:2px}
+      .boxTitle{font:750 20px Inter,Arial,sans-serif;fill:#172a32}
+      .boxCopy{font:400 16px Inter,Arial,sans-serif;fill:#49606a}
+      .small{font:600 14px Inter,Arial,sans-serif;fill:#58717b}
+      .badge{font:800 14px Inter,Arial,sans-serif;fill:#ffffff;letter-spacing:1px}
+      .flow{stroke:#355b63;stroke-width:4;fill:none;marker-end:url(#arrow)}
+      .cloudFlow{stroke:#bb7412;stroke-width:4;fill:none;marker-end:url(#arrowGold)}
+    </style>
+  </defs>
+
+  <rect width="1800" height="1200" rx="34" fill="url(#bg)"/>
+  <rect x="54" y="50" width="64" height="64" rx="17" fill="url(#teal)"/>
+  <text x="86" y="91" text-anchor="middle" class="badge" font-size="22">DP</text>
+  <text x="145" y="91" class="title">Due Process · IEP Evidence Operations</text>
+  <text x="58" y="135" class="subtitle">Qwen interprets bounded language. Deterministic code handles consequences. A human controls action.</text>
+
+  <rect x="58" y="176" width="1684" height="588" rx="26" fill="#ffffff" stroke="#d5e2e5" stroke-width="2" filter="url(#shadow)"/>
+  <text x="92" y="219" class="lane">PUBLIC PRODUCT WORKFLOW · RENDER</text>
+
+  <g transform="translate(92 270)">
+    <rect width="205" height="132" rx="18" fill="#f7faf9" stroke="#aebfc5" stroke-width="2"/>
+    <text x="102" y="42" text-anchor="middle" class="boxTitle">Reviewer</text>
+    <text x="102" y="73" text-anchor="middle" class="boxCopy">Synthetic or already</text>
+    <text x="102" y="98" text-anchor="middle" class="boxCopy">de-identified case</text>
+  </g>
+  <path d="M297 336 H350" class="flow"/>
+
+  <g transform="translate(350 250)">
+    <rect width="245" height="172" rx="20" fill="#eaf6f2" stroke="#5d9188" stroke-width="2.5"/>
+    <text x="122" y="42" text-anchor="middle" class="boxTitle">Streamlit case desk</text>
+    <text x="122" y="74" text-anchor="middle" class="boxCopy">Intake · inspect · edit</text>
+    <text x="122" y="101" text-anchor="middle" class="boxCopy">Human checkpoints</text>
+    <text x="122" y="128" text-anchor="middle" class="boxCopy">Reviewer download</text>
+    <text x="122" y="153" text-anchor="middle" class="small">Hosted on Render</text>
+  </g>
+  <path d="M595 336 H648" class="flow"/>
+
+  <g transform="translate(648 270)">
+    <rect width="215" height="132" rx="18" fill="#edf6f8" stroke="#6b92a1" stroke-width="2"/>
+    <text x="107" y="42" text-anchor="middle" class="boxTitle">Privacy gate</text>
+    <text x="107" y="73" text-anchor="middle" class="boxCopy">Attestation + known</text>
+    <text x="107" y="98" text-anchor="middle" class="boxCopy">identifier redaction</text>
+  </g>
+  <path d="M863 336 H916" class="flow"/>
+
+  <g transform="translate(916 242)">
+    <rect width="270" height="188" rx="22" fill="url(#gold)" stroke="#c58a21" stroke-width="3"/>
+    <text x="135" y="43" text-anchor="middle" class="boxTitle">Qwen Cloud Model Studio</text>
+    <text x="135" y="77" text-anchor="middle" class="boxCopy">Commitment extraction</text>
+    <text x="135" y="105" text-anchor="middle" class="boxCopy">Reason classification</text>
+    <text x="135" y="133" text-anchor="middle" class="boxCopy">Bounded narrative</text>
+    <text x="135" y="161" text-anchor="middle" class="small">Per-call provenance</text>
+  </g>
+  <path d="M1186 336 H1239" class="flow"/>
+
+  <g transform="translate(1239 270)">
+    <rect width="210" height="132" rx="18" fill="#fceae4" stroke="#bd725f" stroke-width="2"/>
+    <text x="105" y="42" text-anchor="middle" class="boxTitle">Human confirms</text>
+    <text x="105" y="73" text-anchor="middle" class="boxCopy">Extracted commitment</text>
+    <text x="105" y="98" text-anchor="middle" class="boxCopy">Ambiguous reasons</text>
+  </g>
+  <path d="M1449 336 H1502" class="flow"/>
+
+  <g transform="translate(1502 270)">
+    <rect width="205" height="132" rx="18" fill="#e8f0f7" stroke="#68819d" stroke-width="2"/>
+    <text x="102" y="42" text-anchor="middle" class="boxTitle">Confirmed inputs</text>
+    <text x="102" y="73" text-anchor="middle" class="boxCopy">Typed, reviewable</text>
+    <text x="102" y="98" text-anchor="middle" class="boxCopy">workflow state</text>
+  </g>
+
+  <path d="M1604 402 V478 H480 V512" class="flow"/>
+
+  <g transform="translate(350 512)">
+    <rect width="260" height="176" rx="20" fill="#e8f0f7" stroke="#68819d" stroke-width="2.5"/>
+    <text x="130" y="42" text-anchor="middle" class="boxTitle">Deterministic Python core</text>
+    <text x="130" y="77" text-anchor="middle" class="boxCopy">Service-minute ledger</text>
+    <text x="130" y="105" text-anchor="middle" class="boxCopy">Make-ups · thresholds</text>
+    <text x="130" y="133" text-anchor="middle" class="boxCopy">Deadline indicators</text>
+    <text x="130" y="158" text-anchor="middle" class="small">SQLite case memory</text>
+  </g>
+  <path d="M610 600 H700" class="flow"/>
+
+  <g transform="translate(700 512)">
+    <rect width="275" height="176" rx="20" fill="#eaf6f2" stroke="#5d9188" stroke-width="2.5"/>
+    <text x="137" y="42" text-anchor="middle" class="boxTitle">Evidence publication gate</text>
+    <text x="137" y="77" text-anchor="middle" class="boxCopy">IEP + exact log IDs</text>
+    <text x="137" y="105" text-anchor="middle" class="boxCopy">Controlled authority IDs</text>
+    <text x="137" y="133" text-anchor="middle" class="boxCopy">Reject incomplete claims</text>
+  </g>
+  <path d="M975 600 H1065" class="flow"/>
+
+  <g transform="translate(1065 512)">
+    <rect width="270" height="176" rx="20" fill="#fceae4" stroke="#bd725f" stroke-width="2.5"/>
+    <text x="135" y="42" text-anchor="middle" class="boxTitle">Final human review</text>
+    <text x="135" y="77" text-anchor="middle" class="boxCopy">Inspect evidence + draft</text>
+    <text x="135" y="105" text-anchor="middle" class="boxCopy">No inferred permission</text>
+    <text x="135" y="133" text-anchor="middle" class="boxCopy">No automatic filing</text>
+  </g>
+  <path d="M1335 600 H1425" class="flow"/>
+
+  <g transform="translate(1425 532)">
+    <rect width="230" height="136" rx="18" fill="#ffffff" stroke="#5d9188" stroke-width="2.5"/>
+    <text x="115" y="43" text-anchor="middle" class="boxTitle">Evidence packet</text>
+    <text x="115" y="76" text-anchor="middle" class="boxCopy">Reviewer-controlled</text>
+    <text x="115" y="102" text-anchor="middle" class="boxCopy">download only</text>
+  </g>
+
+  <rect x="58" y="808" width="1684" height="316" rx="26" fill="#203746" filter="url(#shadow)"/>
+  <text x="92" y="852" class="lane" fill="#bcd0d8">ALIBABA CLOUD DEPLOYMENT PROOF · AUTHENTICATED SYNTHETIC BACKEND</text>
+
+  <g transform="translate(112 900)">
+    <rect width="235" height="142" rx="19" fill="#f7faf9" stroke="#b9c9ce" stroke-width="2"/>
+    <text x="117" y="43" text-anchor="middle" class="boxTitle">Signed invocation</text>
+    <text x="117" y="77" text-anchor="middle" class="boxCopy">Serverless Devs /</text>
+    <text x="117" y="103" text-anchor="middle" class="boxCopy">Function Compute auth</text>
+  </g>
+  <path d="M347 971 H430" class="cloudFlow"/>
+
+  <g transform="translate(430 880)">
+    <rect width="310" height="182" rx="22" fill="#ffffff" stroke="#cf8b25" stroke-width="3"/>
+    <text x="155" y="44" text-anchor="middle" class="boxTitle">Alibaba Function Compute</text>
+    <text x="155" y="80" text-anchor="middle" class="boxCopy">Python 3.10 · Singapore</text>
+    <text x="155" y="110" text-anchor="middle" class="boxCopy">Synthetic-only input boundary</text>
+    <text x="155" y="140" text-anchor="middle" class="boxCopy">No storage or outbound action</text>
+    <text x="155" y="165" text-anchor="middle" class="small">due-process-agent</text>
+  </g>
+  <path d="M740 971 H835" class="cloudFlow"/>
+
+  <g transform="translate(835 900)">
+    <rect width="250" height="142" rx="19" fill="url(#gold)" stroke="#cf8b25" stroke-width="2.5"/>
+    <text x="125" y="43" text-anchor="middle" class="boxTitle">Qwen Cloud</text>
+    <text x="125" y="77" text-anchor="middle" class="boxCopy">Structured language tasks</text>
+    <text x="125" y="103" text-anchor="middle" class="boxCopy">Request-ID provenance</text>
+  </g>
+  <path d="M1085 971 H1180" class="cloudFlow"/>
+
+  <g transform="translate(1180 900)">
+    <rect width="250" height="142" rx="19" fill="#e8f0f7" stroke="#7790aa" stroke-width="2.5"/>
+    <text x="125" y="43" text-anchor="middle" class="boxTitle">Same deterministic core</text>
+    <text x="125" y="77" text-anchor="middle" class="boxCopy">Verified ledger totals</text>
+    <text x="125" y="103" text-anchor="middle" class="boxCopy">Draft remains pending</text>
+  </g>
+  <path d="M1430 971 H1510" class="cloudFlow"/>
+
+  <g transform="translate(1510 900)">
+    <rect width="185" height="142" rx="19" fill="#fceae4" stroke="#bd725f" stroke-width="2.5"/>
+    <text x="92" y="43" text-anchor="middle" class="boxTitle">Proof response</text>
+    <text x="92" y="77" text-anchor="middle" class="boxCopy">Qwen calls</text>
+    <text x="92" y="103" text-anchor="middle" class="boxCopy">Human still required</text>
+  </g>
+
+  <text x="58" y="1170" class="small">Production principle: model output is never accepted as consequential state until a person confirms it and deterministic validation succeeds.</text>
+</svg>

@@ -4,7 +4,7 @@
 [![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-bounded%20AI-6F4AFF.svg)](https://www.alibabacloud.com/en/product/modelstudio)
 [![Render](https://img.shields.io/badge/Render-live-46E3B7.svg?logo=render&logoColor=111111)](https://due-process-iep-evidence.onrender.com)
 [![CI](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/due-process-iep-agent/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-147%20passing-brightgreen.svg)](#reproducible-engineering-verification)
+[![Tests](https://img.shields.io/badge/tests-155%20passing-brightgreen.svg)](#reproducible-engineering-verification)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 > **An IEP says what a school promised. Due Process shows what the records prove—and keeps every next step under human control.**
@@ -38,6 +38,9 @@ Agent.
 - **Privacy-gated case intake** — the public app accepts only synthetic or already
   de-identified records and includes a complete redacted demonstration kit
 - **Public product** — deployed Render workspace with verified Qwen Cloud calls
+- **Alibaba deployment proof** — authenticated, synthetic-only Function Compute
+  backend running the same Qwen and deterministic workflow without accepting
+  custom records or outbound actions
 
 ## Live deployment
 
@@ -45,11 +48,17 @@ Agent.
 |---|---|---|
 | **Product workspace** | [due-process-iep-evidence.onrender.com](https://due-process-iep-evidence.onrender.com) | Public; synthetic/de-identified data only |
 | **Health check** | [/_stcore/health](https://due-process-iep-evidence.onrender.com/_stcore/health) | Public |
+| **Alibaba backend** | `due-process-agent` in Function Compute, `ap-southeast-1` | Function-authenticated; synthetic proof only |
 | **Source repository** | [github.com/ankitlade12/due-process-iep-agent](https://github.com/ankitlade12/due-process-iep-agent) | Public |
 
 The public presentation layer runs on Render. Live analysis uses Qwen Cloud for
 bounded extraction, classification, and narrative tasks. Deterministic analysis
 and human-review gates run inside the application service.
+
+The required Alibaba Cloud backend is deployed separately to Function Compute.
+It accepts only authenticated health and packaged synthetic-proof invocations,
+runs the same workflow with Qwen provenance, and rejects custom student records,
+storage, email, and filing operations.
 
 ## Sixty-second product tour
 
@@ -68,6 +77,8 @@ To demonstrate real intake instead, choose **Upload redacted case** and follow t
 uploadable CSV and the supporting note needed to resolve its deliberate ambiguity.
 
 ## Architecture
+
+[![Due Process runtime architecture](docs/architecture.png)](docs/architecture.pdf)
 
 ### Product workflow
 
@@ -110,6 +121,12 @@ graph TB
         APPROVAL[Human approval checkpoints]
     end
 
+    subgraph "ALIBABA DEPLOYMENT PROOF"
+        SIGNED[Signed invocation]
+        FC[Function Compute: synthetic only]
+        PROOF[Qwen provenance + deterministic result]
+    end
+
     USER --> UI
     UI --> QWEN
     QWEN --> EXTRACT
@@ -122,6 +139,9 @@ graph TB
     LEDGER --> GROUND
     CORPUS --> GROUND
     GROUND --> APPROVAL
+    SIGNED --> FC
+    FC --> QWEN
+    FC --> PROOF
     style QWEN fill:#eee9ff,stroke:#6f4aff,stroke-width:2px
     style LEDGER fill:#fff4e1,stroke:#c56b00,stroke-width:2px
     style APPROVAL fill:#e8f5e9,stroke:#267455,stroke-width:2px
@@ -143,6 +163,7 @@ claim.
 | **Grounding** | Controlled IDEA / CFR / U.S.C. / case-law corpus | Source resolution and claim publication gate |
 | **Local persistence** | SQLite | Case memory and deadline agenda |
 | **Frontend deployment** | Render Blueprint | Public Streamlit service and health check |
+| **Alibaba backend** | Function Compute 3.0 | Authenticated synthetic workflow and deployment proof |
 | **Testing** | pytest + GitHub Actions | Unit, integration, privacy, grounding, workflow, and evaluation coverage |
 
 ## The problem
@@ -302,7 +323,7 @@ curl https://due-process-iep-evidence.onrender.com/_stcore/health
 Current verified result:
 
 ```text
-147 passed
+155 passed
 ```
 
 The included offline command is a regression suite, not a performance benchmark:
@@ -343,6 +364,7 @@ due-process-iep-agent/
 │   ├── instruments/             # fixed drafts and approval contracts
 │   └── examples/                # Streamlit desk and runnable demos
 ├── docs/                        # public architecture and redacted demo guide
+├── deploy/                      # authenticated synthetic-only Function Compute backend
 ├── tests/                       # offline unit and integration suite
 ├── render.yaml                  # public Streamlit Blueprint
 ├── pyproject.toml               # package and dependency contract
@@ -370,6 +392,14 @@ environment-variable store.
 [`render.yaml`](render.yaml) defines the public Streamlit service, Python runtime,
 build command, model roles, and `/_stcore/health` check. Connect the repository as
 a Render Blueprint and configure the secret values requested by the Blueprint.
+
+### Alibaba Function Compute backend
+
+[`deploy/s.yaml`](deploy/s.yaml) defines the required Alibaba Cloud backend.
+[`deploy/handler.py`](deploy/handler.py) enforces its synthetic-only boundary,
+and [`deploy/README.md`](deploy/README.md) documents reproducible build, deploy,
+and signed invocation commands. The trigger uses Function Compute authentication;
+it is not a public model proxy.
 
 ## Why Due Process is different
 
