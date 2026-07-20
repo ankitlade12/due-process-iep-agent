@@ -78,7 +78,7 @@ uploadable CSV and the supporting note needed to resolve its deliberate ambiguit
 
 ## Architecture
 
-[![Due Process runtime architecture](docs/architecture.png)](docs/architecture.pdf)
+![Due Process runtime architecture](docs/architecture.png)
 
 ### Product workflow
 
@@ -421,9 +421,8 @@ evidence accounting + source-level provenance + explicit human control.**
 
 ## Documentation
 
-Start with the [documentation index](docs/README.md), then use:
+Supporting reviewer documentation:
 
-- [Architecture and trust boundaries](docs/architecture.md)
 - [Alibaba deployment proof](docs/DEPLOYMENT_PROOF.md)
 - [Redacted live-demo case](docs/REDACTED_DEMO_CASE.md)
 - [Security policy](SECURITY.md)
