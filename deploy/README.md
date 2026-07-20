@@ -39,8 +39,11 @@ s invoke -e '{"action":"health"}'
 Qwen-backed synthetic proof:
 
 ```bash
-s invoke -e @sample-proof-request.json
+s invoke -e '{"action":"synthetic-proof"}'
 ```
+
+[`sample-proof-request.json`](sample-proof-request.json) contains the same event
+as a readable fixture; Serverless Devs v3 expects the inline JSON shown above.
 
 The proof response reports Function Compute metadata, per-call Qwen provenance,
 deterministic ledger totals, and the unresolved human-approval state. Capture the

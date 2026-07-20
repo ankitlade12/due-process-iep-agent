@@ -424,6 +424,7 @@ evidence accounting + source-level provenance + explicit human control.**
 Start with the [documentation index](docs/README.md), then use:
 
 - [Architecture and trust boundaries](docs/architecture.md)
+- [Alibaba deployment proof](docs/DEPLOYMENT_PROOF.md)
 - [Redacted live-demo case](docs/REDACTED_DEMO_CASE.md)
 - [Security policy](SECURITY.md)
 
